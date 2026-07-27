@@ -1,0 +1,781 @@
+@import "tailwindcss";
+
+/* ============================================================
+   MOCHI LIFE - KAWAII DESIGN SYSTEM
+   ============================================================ */
+
+:root {
+  /* ---- Kawaii Color Palette ---- */
+  --cream: #FFF8F0;
+  --cream-dark: #FFF0E0;
+  
+  --cheese-50: #FFFDF0;
+  --cheese-100: #FFF5CC;
+  --cheese-200: #FFE880;
+  --cheese-300: #FFD84D;
+  --cheese-400: #FFCA1A;
+  --cheese-500: #E6B200;
+  
+  --peach-50: #FFF4F0;
+  --peach-100: #FFE4DC;
+  --peach-200: #FFBFAE;
+  --peach-300: #FF9A80;
+  --peach-400: #FF7A5C;
+  --peach-500: #E85E42;
+  
+  --mint-50: #EDFAF5;
+  --mint-100: #C8F0E2;
+  --mint-200: #8EE3C8;
+  --mint-300: #5ECFAA;
+  --mint-400: #3BB88E;
+  --mint-500: #2A9E78;
+  
+  --lavender-50: #F5F2FF;
+  --lavender-100: #E8E0FF;
+  --lavender-200: #C9B8FF;
+  --lavender-300: #A990FF;
+  --lavender-400: #8F71F5;
+  --lavender-500: #7356D9;
+  
+  --chocolate-50: #FAF5F0;
+  --chocolate-100: #F0E6D8;
+  --chocolate-200: #D9C4A8;
+  --chocolate-300: #B8997A;
+  --chocolate-400: #8B6F52;
+  --chocolate-500: #5C4033;
+  --chocolate-600: #3D2B1F;
+  --chocolate-700: #2A1D14;
+  
+  /* ---- Semantic tokens ---- */
+  --color-background: var(--cream);
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #FFFFFF;
+  --color-border: #F0E6D8;
+  
+  --color-text-primary: var(--chocolate-600);
+  --color-text-secondary: var(--chocolate-500);
+  --color-text-muted: var(--chocolate-300);
+  --color-text-placeholder: var(--chocolate-200);
+  
+  --color-primary: var(--cheese-400);
+  --color-primary-hover: var(--cheese-300);
+  --color-primary-foreground: var(--chocolate-600);
+  
+  --color-accent-fitness: var(--peach-400);
+  --color-accent-study: var(--lavender-400);
+  --color-accent-expense: var(--mint-400);
+  
+  --color-success: var(--mint-400);
+  --color-warning: var(--cheese-400);
+  --color-danger: var(--peach-500);
+  --color-info: var(--lavender-400);
+  
+  /* ---- Shadows ---- */
+  --shadow-xs: 0 1px 3px rgba(61, 43, 31, 0.05);
+  --shadow-sm: 0 2px 8px rgba(61, 43, 31, 0.07);
+  --shadow-md: 0 4px 16px rgba(61, 43, 31, 0.09);
+  --shadow-lg: 0 8px 32px rgba(61, 43, 31, 0.11);
+  --shadow-xl: 0 16px 48px rgba(61, 43, 31, 0.13);
+  
+  /* ---- Border Radius ---- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+  
+  /* ---- Transitions ---- */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+}
+
+/* ============================================================
+   TAILWIND v4 THEME EXTENSIONS
+   ============================================================ */
+
+@theme {
+  --font-sans: 'Nunito', system-ui, sans-serif;
+  
+  /* Colors */
+  --color-cream: #FFF8F0;
+  --color-cream-dark: #FFF0E0;
+  
+  --color-cheese-50: #FFFDF0;
+  --color-cheese-100: #FFF5CC;
+  --color-cheese-200: #FFE880;
+  --color-cheese-300: #FFD84D;
+  --color-cheese-400: #FFCA1A;
+  --color-cheese-500: #E6B200;
+  
+  --color-peach-50: #FFF4F0;
+  --color-peach-100: #FFE4DC;
+  --color-peach-200: #FFBFAE;
+  --color-peach-300: #FF9A80;
+  --color-peach-400: #FF7A5C;
+  --color-peach-500: #E85E42;
+  
+  --color-mint-50: #EDFAF5;
+  --color-mint-100: #C8F0E2;
+  --color-mint-200: #8EE3C8;
+  --color-mint-300: #5ECFAA;
+  --color-mint-400: #3BB88E;
+  --color-mint-500: #2A9E78;
+  
+  --color-lavender-50: #F5F2FF;
+  --color-lavender-100: #E8E0FF;
+  --color-lavender-200: #C9B8FF;
+  --color-lavender-300: #A990FF;
+  --color-lavender-400: #8F71F5;
+  --color-lavender-500: #7356D9;
+  
+  --color-chocolate-50: #FAF5F0;
+  --color-chocolate-100: #F0E6D8;
+  --color-chocolate-200: #D9C4A8;
+  --color-chocolate-300: #B8997A;
+  --color-chocolate-400: #8B6F52;
+  --color-chocolate-500: #5C4033;
+  --color-chocolate-600: #3D2B1F;
+  --color-chocolate-700: #2A1D14;
+  
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Nunito', system-ui, sans-serif;
+  background-color: var(--cream);
+  color: var(--chocolate-600);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   SCROLLBAR STYLING
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--chocolate-200);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--chocolate-300);
+}
+
+/* ============================================================
+   KAWAII UTILITY CLASSES
+   ============================================================ */
+
+.mochi-card {
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--chocolate-100);
+  transition: box-shadow var(--transition-normal), transform var(--transition-fast);
+}
+
+.mochi-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.mochi-card-elevated {
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.mochi-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-full);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  text-decoration: none;
+  border: none;
+  padding: 10px 20px;
+  line-height: 1;
+}
+
+.mochi-btn:active {
+  transform: scale(0.97);
+}
+
+.mochi-btn-primary {
+  background: var(--cheese-400);
+  color: var(--chocolate-600);
+}
+
+.mochi-btn-primary:hover {
+  background: var(--cheese-300);
+  box-shadow: 0 4px 12px rgba(255, 202, 26, 0.35);
+  transform: translateY(-1px);
+}
+
+.mochi-btn-secondary {
+  background: var(--cream);
+  color: var(--chocolate-500);
+  border: 1.5px solid var(--chocolate-200);
+}
+
+.mochi-btn-secondary:hover {
+  background: var(--chocolate-100);
+  border-color: var(--chocolate-300);
+}
+
+.mochi-btn-danger {
+  background: var(--peach-400);
+  color: white;
+}
+
+.mochi-btn-danger:hover {
+  background: var(--peach-500);
+  box-shadow: 0 4px 12px rgba(232, 94, 66, 0.3);
+}
+
+.mochi-btn-ghost {
+  background: transparent;
+  color: var(--chocolate-500);
+}
+
+.mochi-btn-ghost:hover {
+  background: var(--cream);
+}
+
+.mochi-btn-sm {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+}
+
+.mochi-btn-lg {
+  padding: 13px 28px;
+  font-size: 1rem;
+}
+
+.mochi-btn-icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+/* ============================================================
+   PROGRESS BAR
+   ============================================================ */
+
+.mochi-progress {
+  width: 100%;
+  height: 10px;
+  background: var(--chocolate-100);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.mochi-progress-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: linear-gradient(90deg, var(--cheese-400), var(--cheese-300));
+}
+
+.mochi-progress-bar.fitness {
+  background: linear-gradient(90deg, var(--peach-400), var(--peach-300));
+}
+
+.mochi-progress-bar.study {
+  background: linear-gradient(90deg, var(--lavender-400), var(--lavender-300));
+}
+
+.mochi-progress-bar.expense {
+  background: linear-gradient(90deg, var(--mint-400), var(--mint-300));
+}
+
+.mochi-progress-bar.danger {
+  background: linear-gradient(90deg, var(--peach-500), var(--peach-400));
+}
+
+/* ============================================================
+   BADGE
+   ============================================================ */
+
+.mochi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mochi-badge-cheese {
+  background: var(--cheese-100);
+  color: var(--chocolate-600);
+}
+
+.mochi-badge-peach {
+  background: var(--peach-100);
+  color: var(--peach-500);
+}
+
+.mochi-badge-mint {
+  background: var(--mint-100);
+  color: var(--mint-500);
+}
+
+.mochi-badge-lavender {
+  background: var(--lavender-100);
+  color: var(--lavender-500);
+}
+
+/* ============================================================
+   INPUT STYLES
+   ============================================================ */
+
+.mochi-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--chocolate-200);
+  border-radius: var(--radius-md);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.95rem;
+  color: var(--chocolate-600);
+  background: white;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+.mochi-input::placeholder {
+  color: var(--chocolate-300);
+}
+
+.mochi-input:focus {
+  border-color: var(--cheese-400);
+  box-shadow: 0 0 0 3px rgba(255, 202, 26, 0.15);
+}
+
+.mochi-input:disabled {
+  background: var(--cream);
+  color: var(--chocolate-300);
+  cursor: not-allowed;
+}
+
+.mochi-input.error {
+  border-color: var(--peach-400);
+}
+
+.mochi-input.error:focus {
+  box-shadow: 0 0 0 3px rgba(255, 122, 92, 0.15);
+}
+
+.mochi-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--chocolate-500);
+}
+
+.mochi-error-text {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--peach-500);
+  font-weight: 600;
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+
+.mochi-sidebar {
+  width: 240px;
+  min-height: 100vh;
+  background: white;
+  border-right: 1px solid var(--chocolate-100);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 50;
+  transition: transform var(--transition-normal);
+}
+
+.mochi-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: var(--radius-lg);
+  color: var(--chocolate-400);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin: 2px 8px;
+  text-decoration: none;
+}
+
+.mochi-sidebar-item:hover {
+  background: var(--cream);
+  color: var(--chocolate-600);
+}
+
+.mochi-sidebar-item.active {
+  background: var(--cheese-100);
+  color: var(--chocolate-600);
+}
+
+.mochi-sidebar-item.active .sidebar-icon {
+  color: var(--cheese-500);
+}
+
+/* ============================================================
+   BOTTOM NAV
+   ============================================================ */
+
+.mochi-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid var(--chocolate-100);
+  box-shadow: 0 -4px 16px rgba(61, 43, 31, 0.08);
+  display: flex;
+  align-items: center;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mochi-bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  color: var(--chocolate-300);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  text-decoration: none;
+}
+
+.mochi-bottom-nav-item.active {
+  color: var(--cheese-500);
+}
+
+/* ============================================================
+   FAB (Floating Action Button)
+   ============================================================ */
+
+.mochi-fab {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: var(--cheese-400);
+  color: var(--chocolate-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  border: none;
+  font-size: 1.5rem;
+  z-index: 40;
+  transition: all var(--transition-fast);
+}
+
+.mochi-fab:hover {
+  background: var(--cheese-300);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-xl);
+}
+
+.mochi-fab:active {
+  transform: scale(0.96);
+}
+
+@media (min-width: 768px) {
+  .mochi-fab {
+    bottom: 24px;
+    right: 24px;
+  }
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes mochi-bounce-in {
+  0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+  60% { transform: scale(1.05) translateY(-4px); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes mochi-slide-up {
+  0% { transform: translateY(16px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes mochi-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes mochi-wiggle {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+@keyframes mochi-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes mochi-sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.2); }
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-100vh) rotate(0); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.animate-bounce-in { animation: mochi-bounce-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-slide-up { animation: mochi-slide-up 0.4s ease both; }
+.animate-fade-in { animation: mochi-fade-in 0.3s ease both; }
+.animate-wiggle { animation: mochi-wiggle 0.5s ease; }
+.animate-float { animation: mochi-float 3s ease-in-out infinite; }
+.animate-sparkle { animation: mochi-sparkle 1.5s ease-in-out infinite; }
+
+/* Stagger delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.mochi-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--chocolate-100) 25%,
+    var(--chocolate-50) 50%,
+    var(--chocolate-100) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ============================================================
+   CHART CONTAINERS
+   ============================================================ */
+
+.mochi-chart {
+  width: 100%;
+  border-radius: var(--radius-xl);
+}
+
+/* ============================================================
+   HEATMAP
+   ============================================================ */
+
+.heatmap-cell {
+  border-radius: 4px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.3);
+  box-shadow: var(--shadow-sm);
+  z-index: 1;
+  position: relative;
+}
+
+/* ============================================================
+   ACHIEVEMENT MODAL
+   ============================================================ */
+
+.achievement-glow {
+  animation: mochi-sparkle 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(255, 202, 26, 0.5));
+}
+
+/* ============================================================
+   TOAST OVERRIDES (Sonner)
+   ============================================================ */
+
+[data-sonner-toaster] [data-type="success"] {
+  background: white !important;
+  border: 1.5px solid var(--mint-200) !important;
+  color: var(--chocolate-600) !important;
+  border-radius: var(--radius-lg) !important;
+}
+
+[data-sonner-toaster] [data-type="error"] {
+  background: white !important;
+  border: 1.5px solid var(--peach-300) !important;
+  color: var(--chocolate-600) !important;
+  border-radius: var(--radius-lg) !important;
+}
+
+/* ============================================================
+   FLASHCARD
+   ============================================================ */
+
+.flashcard-flip {
+  perspective: 1000px;
+}
+
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-style: preserve-3d;
+}
+
+.flashcard-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.flashcard-front,
+.flashcard-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: var(--radius-xl);
+}
+
+.flashcard-back {
+  transform: rotateY(180deg);
+}
+
+/* ============================================================
+   MAIN LAYOUT
+   ============================================================ */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1;
+  margin-left: 240px;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+@media (max-width: 767px) {
+  .mochi-sidebar {
+    transform: translateX(-100%);
+  }
+  
+  .mochi-sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .app-main {
+    margin-left: 0;
+    padding: 16px;
+    padding-bottom: 80px;
+  }
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.mochi-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.mochi-empty-state .mascot {
+  font-size: 4rem;
+  animation: mochi-float 3s ease-in-out infinite;
+}
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+
+.text-primary { color: var(--chocolate-600); }
+.text-secondary { color: var(--chocolate-500); }
+.text-muted { color: var(--chocolate-400); }
+.text-subtle { color: var(--chocolate-300); }
+
+.text-fitness { color: var(--peach-400); }
+.text-study { color: var(--lavender-400); }
+.text-expense { color: var(--mint-400); }
+
+.bg-fitness-soft { background: var(--peach-50); }
+.bg-study-soft { background: var(--lavender-50); }
+.bg-expense-soft { background: var(--mint-50); }
+
+/* No animations preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
