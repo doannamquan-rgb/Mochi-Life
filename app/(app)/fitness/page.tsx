@@ -192,7 +192,7 @@ export default function FitnessOverviewPage() {
               <YAxis tick={{ fontSize: 11, fill: '#B8997A' }} domain={['dataMin - 2', 'dataMax + 2']} />
               <Tooltip
                 contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }}
-                formatter={(v: number) => [`${v} kg`, 'Cân nặng']}
+                formatter={(v: any) => [`${v} kg`, 'Cân nặng']}
               />
               <Line type="monotone" dataKey="weight" stroke="#FF7A5C" strokeWidth={2.5} dot={{ fill: '#FF7A5C', r: 4 }} name="Cân nặng" />
               <Line type="monotone" dataKey="target" stroke="#3BB88E" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Mục tiêu" />
@@ -211,7 +211,7 @@ export default function FitnessOverviewPage() {
               <YAxis tick={{ fontSize: 11, fill: '#B8997A' }} />
               <Tooltip
                 contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }}
-                formatter={(v: number) => [`${v} kcal`, 'Calo']}
+                formatter={(v: any) => [`${v} kcal`, 'Calo']}
               />
               <Bar dataKey="calories" fill="#FF9A80" radius={[6, 6, 0, 0]} name="Calo" />
             </BarChart>

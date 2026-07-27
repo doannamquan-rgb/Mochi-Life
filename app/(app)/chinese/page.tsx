@@ -77,7 +77,7 @@ export default function ChinesePage() {
     const { data: sessions } = await supabase.from('study_sessions').select('session_date').eq('user_id', user.id).order('session_date', { ascending: false }).limit(60)
     if (sessions) {
       let s = 0
-      const dateSet = new Set(sessions.map(x => x.session_date))
+      const dateSet = new Set((sessions as Array<{ session_date: string }>).map(x => x.session_date))
       const d = new Date()
       while (true) {
         const ds = d.toISOString().split('T')[0]

@@ -57,7 +57,7 @@ export default function ReportsPage() {
     ])
 
     // Weight chart
-    const wChartData = (wLogs.data ?? []).map(w => ({
+    const wChartData = (wLogs.data ?? []).map((w: any) => ({
       date: format(parseISO(w.log_date), 'd/M', { locale: vi }),
       weight: w.weight,
     }))
@@ -65,7 +65,7 @@ export default function ReportsPage() {
 
     // Exercise aggregated by day
     const exByDay: Record<string, { date: string; calories: number; minutes: number; sessions: number }> = {}
-    ;(exLogs.data ?? []).forEach(e => {
+    ;(exLogs.data ?? []).forEach((e: any) => {
       const d = format(parseISO(e.log_date), 'd/M', { locale: vi })
       if (!exByDay[d]) exByDay[d] = { date: d, calories: 0, minutes: 0, sessions: 0 }
       exByDay[d].calories += (e.calories_burned ?? 0)
@@ -76,7 +76,7 @@ export default function ReportsPage() {
     setExerciseData(exChartData)
 
     // Study data
-    const studyChartData = (studySessions.data ?? []).map(s => ({
+    const studyChartData = (studySessions.data ?? []).map((s: any) => ({
       date: format(parseISO(s.session_date), 'd/M', { locale: vi }),
       newWords: s.new_words_count,
       reviewWords: s.reviewed_words_count,
@@ -86,7 +86,7 @@ export default function ReportsPage() {
 
     // Expense by day
     const expByDay: Record<string, { date: string; expense: number; income: number }> = {}
-    ;(transactions.data ?? []).forEach(t => {
+    ;(transactions.data ?? []).forEach((t: any) => {
       const d = format(parseISO(t.transaction_date), 'd/M', { locale: vi })
       if (!expByDay[d]) expByDay[d] = { date: d, expense: 0, income: 0 }
       if (t.type === 'expense') expByDay[d].expense += t.amount
@@ -96,7 +96,7 @@ export default function ReportsPage() {
 
     // Expense by category
     const catMap: Record<string, { name: string; amount: number; icon: string }> = {}
-    ;(transactions.data ?? []).filter(t => t.type === 'expense').forEach(t => {
+    ;(transactions.data ?? []).filter((t: any) => t.type === 'expense').forEach((t: any) => {
       const cat = t.category as any
       const key = cat?.name ?? 'Khác'
       if (!catMap[key]) catMap[key] = { name: key, amount: 0, icon: cat?.icon ?? '⭐' }
@@ -105,18 +105,18 @@ export default function ReportsPage() {
     setCatData(Object.values(catMap).sort((a, b) => b.amount - a.amount).slice(0, 8))
 
     // Summary stats
-    const exData = exLogs.data ?? []
-    setTotalExerciseDays(new Set(exData.map(e => e.log_date)).size)
-    setTotalExerciseMinutes(exData.reduce((s, e) => s + e.duration_minutes, 0))
-    setTotalCaloriesBurned(exData.reduce((s, e) => s + (e.calories_burned ?? 0), 0))
+    const exData: any[] = exLogs.data ?? []
+    setTotalExerciseDays(new Set(exData.map((e: any) => e.log_date)).size)
+    setTotalExerciseMinutes(exData.reduce((s: number, e: any) => s + e.duration_minutes, 0))
+    setTotalCaloriesBurned(exData.reduce((s: number, e: any) => s + (e.calories_burned ?? 0), 0))
 
-    const sessions = studySessions.data ?? []
-    setTotalStudyDays(new Set(sessions.map(s => s.session_date)).size)
-    setTotalNewWords(sessions.reduce((s, x) => s + x.new_words_count, 0))
+    const sessions: any[] = studySessions.data ?? []
+    setTotalStudyDays(new Set(sessions.map((s: any) => s.session_date)).size)
+    setTotalNewWords(sessions.reduce((s: number, x: any) => s + x.new_words_count, 0))
 
-    const txData = transactions.data ?? []
-    setTotalExpense(txData.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0))
-    setTotalIncome(txData.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0))
+    const txData: any[] = transactions.data ?? []
+    setTotalExpense(txData.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + t.amount, 0))
+    setTotalIncome(txData.filter((t: any) => t.type === 'income').reduce((s: number, t: any) => s + t.amount, 0))
 
     setLoading(false)
   }
@@ -195,7 +195,7 @@ export default function ReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#F0E6D8" />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#B8997A' }} />
                   <YAxis tick={{ fontSize: 11, fill: '#B8997A' }} domain={['dataMin - 2', 'dataMax + 2']} />
-                  <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: number) => [`${v} kg`, 'Cân nặng']} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: any) => [`${v} kg`, 'Cân nặng']} />
                   <Line type="monotone" dataKey="weight" stroke="#FF7A5C" strokeWidth={2.5} dot={{ fill: '#FF7A5C', r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -209,7 +209,7 @@ export default function ReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#F0E6D8" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#B8997A' }} />
                   <YAxis tick={{ fontSize: 10, fill: '#B8997A' }} />
-                  <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: number) => [`${v} kcal`]} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: any) => [`${v} kcal`]} />
                   <Bar dataKey="calories" fill="#FF9A80" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -261,7 +261,7 @@ export default function ReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#F0E6D8" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#B8997A' }} />
                   <YAxis tick={{ fontSize: 10, fill: '#B8997A' }} tickFormatter={v => formatVNDCompact(v)} />
-                  <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: number) => [formatVNDCompact(v)]} />
+                  <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: any) => [formatVNDCompact(Number(v))]} />
                   <Bar dataKey="expense" fill="#FF9A80" radius={[4, 4, 0, 0]} name="Chi" />
                   <Bar dataKey="income" fill="#5ECFAA" radius={[4, 4, 0, 0]} name="Thu" />
                   <Legend />
@@ -278,7 +278,7 @@ export default function ReportsPage() {
                     <Pie data={catData} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={false}>
                       {catData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: number) => [formatVNDCompact(v)]} contentStyle={{ fontFamily: 'Nunito', borderRadius: 12 }} />
+                    <Tooltip formatter={(v: any) => [formatVNDCompact(Number(v))]} contentStyle={{ fontFamily: 'Nunito', borderRadius: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pie-legend">

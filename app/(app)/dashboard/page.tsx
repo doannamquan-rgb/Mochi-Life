@@ -94,21 +94,21 @@ export default function DashboardPage() {
 
     if (vocab.data) {
       setTotalVocab(vocab.data.length)
-      const due = vocab.data.filter(v => new Date(v.next_review_at) <= new Date()).length
+      const due = vocab.data.filter((v: any) => new Date(v.next_review_at) <= new Date()).length
       setDueVocab(due)
     }
 
     // Calculate expense stats
-    const txData = transactions.data ?? []
-    const todayTx = txData.filter(t => t.transaction_date === today && t.type === 'expense')
-    const monthTx = txData.filter(t => t.type === 'expense')
-    setTodayExpense(todayTx.reduce((sum, t) => sum + t.amount, 0))
-    setMonthExpense(monthTx.reduce((sum, t) => sum + t.amount, 0))
+    const txData: any[] = transactions.data ?? []
+    const todayTx = txData.filter((t: any) => t.transaction_date === today && t.type === 'expense')
+    const monthTx = txData.filter((t: any) => t.type === 'expense')
+    setTodayExpense(todayTx.reduce((sum: number, t: any) => sum + t.amount, 0))
+    setMonthExpense(monthTx.reduce((sum: number, t: any) => sum + t.amount, 0))
     setMonthBudget(budget.data)
 
     // Top category
     const catMap: Record<string, number> = {}
-    monthTx.forEach(t => {
+    monthTx.forEach((t: any) => {
       const cat = (t.category as any)?.name ?? 'Khác'
       catMap[cat] = (catMap[cat] ?? 0) + t.amount
     })
@@ -125,7 +125,7 @@ export default function DashboardPage() {
 
     if (sessions) {
       let streak = 0
-      const dateSet = new Set(sessions.map(s => s.session_date))
+      const dateSet = new Set((sessions as Array<{ session_date: string }>).map((s: any) => s.session_date))
       const checkDate = new Date()
       while (true) {
         const ds = checkDate.toISOString().split('T')[0]

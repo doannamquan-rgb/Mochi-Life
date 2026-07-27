@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
-import { formatVND, formatVNDCompact, formatDate } from '@/lib/format'
-import { todayString, formatDate as fmtDate } from '@/lib/date-utils'
+import { formatVND, formatVNDCompact } from '@/lib/format'
+import { todayString, formatDate } from '@/lib/date-utils'
 import type { Transaction, ExpenseCategory, Wallet } from '@/lib/types'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns'
@@ -170,7 +170,7 @@ function ExpensePageContent() {
   function exportCSV() {
     const header = 'Ngày,Loại,Danh mục,Số tiền,Nội dung,Ví,Ghi chú'
     const rows = filteredTx.map(t =>
-      `${fmtDate(t.transaction_date)},${t.type === 'expense' ? 'Chi tiêu' : 'Thu nhập'},"${(t.category as any)?.name ?? ''}",${t.amount},"${t.description ?? ''}","${(t.wallet as any)?.name ?? ''}","${t.note ?? ''}"` 
+      `${formatDate(t.transaction_date)},${t.type === 'expense' ? 'Chi tiêu' : 'Thu nhập'},"${(t.category as any)?.name ?? ''}",${t.amount},"${t.description ?? ''}","${(t.wallet as any)?.name ?? ''}","${t.note ?? ''}"` 
     )
     const csv = [header, ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -253,7 +253,7 @@ function ExpensePageContent() {
               <CartesianGrid strokeDasharray="3 3" stroke="#F0E6D8" />
               <XAxis type="number" tick={{ fontSize: 10, fill: '#B8997A' }} tickFormatter={v => formatVNDCompact(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#5C4033' }} width={70} />
-              <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: number) => [formatVND(v), 'Số tiền']} />
+              <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: any) => [formatVND(Number(v)), 'Số tiền']} />
               <Bar dataKey="amount" radius={[0, 6, 6, 0]}>
                 {catChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
@@ -307,7 +307,7 @@ function ExpensePageContent() {
                 <div className="tx-info">
                   <div className="tx-name">{tx.description || cat?.name || (tx.type === 'expense' ? 'Chi tiêu' : 'Thu nhập')}</div>
                   <div className="tx-meta">
-                    {fmtDate(tx.transaction_date)}
+                    {formatDate(tx.transaction_date)}
                     {cat?.name && ` · ${cat.name}`}
                     {wallet?.name && ` · ${wallet.icon ?? ''} ${wallet.name}`}
                   </div>

@@ -206,7 +206,7 @@ function WeightPageContent() {
               <CartesianGrid strokeDasharray="3 3" stroke="#F0E6D8" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#B8997A' }} />
               <YAxis tick={{ fontSize: 11, fill: '#B8997A' }} domain={['dataMin - 2', 'dataMax + 2']} />
-              <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: number) => [`${v} kg`]} />
+              <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: any) => [`${v} kg`]} />
               <Line type="monotone" dataKey="weight" stroke="#FF7A5C" strokeWidth={2.5} dot={{ fill: '#FF7A5C', r: 4 }} />
               <Line type="monotone" dataKey="target" stroke="#3BB88E" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
             </LineChart>

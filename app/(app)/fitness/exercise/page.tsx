@@ -255,7 +255,7 @@ function ExercisePageContent() {
               <CartesianGrid strokeDasharray="3 3" stroke="#F0E6D8" />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#B8997A' }} />
               <YAxis tick={{ fontSize: 10, fill: '#B8997A' }} />
-              <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: number) => [`${v} kcal`]} />
+              <Tooltip contentStyle={{ background: 'white', border: '1.5px solid #F0E6D8', borderRadius: 12, fontFamily: 'Nunito' }} formatter={(v: any) => [`${v} kcal`]} />
               <Bar dataKey="calories" fill="#FF9A80" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

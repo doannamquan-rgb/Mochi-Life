@@ -34,9 +34,9 @@ export default function BudgetPage() {
     ])
 
     const txByCategory: Record<string, number> = {}
-    const totalSpent = (txRes.data ?? []).reduce((s, t) => { txByCategory[t.category_id ?? 'null'] = (txByCategory[t.category_id ?? 'null'] ?? 0) + t.amount; return s + t.amount }, 0)
+    const totalSpent = (txRes.data ?? []).reduce((s: number, t: any) => { txByCategory[t.category_id ?? 'null'] = (txByCategory[t.category_id ?? 'null'] ?? 0) + t.amount; return s + t.amount }, 0)
 
-    const bs = (budgetsRes.data ?? []).map(b => ({
+    const bs = (budgetsRes.data ?? []).map((b: any) => ({
       ...b,
       spent: b.is_total_budget ? totalSpent : (txByCategory[b.category_id ?? 'null'] ?? 0),
     }))
