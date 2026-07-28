@@ -101,7 +101,7 @@ export default function QuizPage() {
       <div className="start-card animate-bounce-in">
         <span style={{ fontSize: '3.5rem' }}>❓</span>
         <h1>Quiz Từ vựng</h1>
-        <p>Kiểm tra kiến thức từ vựng HSK 3 của bạn!</p>
+        <p>Kiểm tra kiến thức từ vựng tiếng Trung của bạn!</p>
         {vocab.length < 4 ? (
           <div className="not-enough">
             <p>Cần ít nhất 4 từ vựng để làm quiz.</p>

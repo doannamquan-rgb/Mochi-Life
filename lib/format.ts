@@ -178,6 +178,14 @@ export const FREQUENCY_LABELS = {
   yearly: 'Hằng năm',
 }
 
+// Module Category Labels (Strict Vietnamese translation)
+export const MODULE_CATEGORY_LABELS = {
+  fitness: { label: 'Sức khỏe', color: '#FF7A5C', emoji: '💪' },
+  study: { label: 'Học tập', color: '#8F71F5', emoji: '📚' },
+  expense: { label: 'Tài chính', color: '#3BB88E', emoji: '💰' },
+  general: { label: 'Tổng hợp', color: '#FFCA1A', emoji: '🌟' },
+}
+
 // Word type labels
 export const WORD_TYPE_LABELS: Record<string, string> = {
   noun: 'Danh từ',
@@ -192,3 +200,4 @@ export const WORD_TYPE_LABELS: Record<string, string> = {
   interjection: 'Thán từ',
   other: 'Khác',
 }
+

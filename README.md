@@ -1,148 +1,129 @@
 # 🐱 Mochi Life
 
-> Ứng dụng quản lý mục tiêu cá nhân theo phong cách kawaii — Giảm cân, Học tiếng Trung HSK 3, và Kiểm soát Chi tiêu.
+> Ứng dụng quản lý cuộc sống cá nhân đa năng theo phong cách kawaii — Giảm cân & Luyện tập, Học tiếng Trung đa cấp độ, Kiểm soát Chi tiêu, Giao dịch định kỳ, Lịch tổng hợp, Gamification & PWA Offline.
 
-## ✨ Tính năng
+Repository tham khảo: [https://github.com/doannamquan-rgb/Mochi-Life](https://github.com/doannamquan-rgb/Mochi-Life)
 
-### 💪 Module Giảm cân & Luyện tập
-- Theo dõi cân nặng hàng ngày với biểu đồ
-- Ghi nhật ký luyện tập (ước tính calo, cự ly, bước chân)
-- Đặt mục tiêu cân nặng & xem chỉ số BMI
-- Biểu đồ tiến độ theo ngày/tuần/tháng
+---
 
-### 🈶 Module Học tiếng Trung HSK 3
-- Quản lý bài học theo khóa học
-- Từ điển từ vựng với Hán tự, Pinyin, nghĩa
-- **Hệ thống SRS (Spaced Repetition)** — flashcard thông minh theo thuật toán SM-2
-- Quiz trắc nghiệm 4 lựa chọn
-- Học ngữ pháp với ví dụ minh họa
-- Nhật ký buổi học + streak
+## ✨ Tính năng chính
 
-### 💰 Module Chi tiêu cá nhân
-- Ghi thu/chi với danh mục và ví
-- Quản lý ngân sách theo tháng (tổng + theo danh mục)
-- Cảnh báo khi vượt ngân sách
-- Báo cáo chi tiêu bằng biểu đồ pie & bar chart
+### 💪 Module Sức khỏe (Fitness & Weight)
+- Theo dõi cân nặng hàng ngày và tính chỉ số BMI tự động
+- Nhật ký luyện tập (chạy bộ, gym, yoga, cầu lông,...) ước tính lượng calo tiêu thụ
+- Đặt mục tiêu cân nặng & mục tiêu vận động hàng tuần
 
-### 📊 Dashboard & Báo cáo
-- Dashboard tổng hợp 3 module
-- Báo cáo chi tiết với 5 khung thời gian (7N, 30N, 3T, 6T, 1N)
-- Xuất dữ liệu CSV & backup JSON
-- Hệ thống thành tích (Achievements)
+### 🈶 Module Học tiếng Trung (Multi-Course & Multi-Level)
+- Hỗ trợ **nhiều khóa học** và **nhiều cấp độ**: HSK 1, HSK 2, HSK 3, HSK 4, HSK 5, HSK 6, HSK 7–9 và Khóa học tùy chỉnh
+- Chuyển đổi linh hoạt giữa các khóa học (Course Switcher)
+- Thuật toán ôn tập lặp lại ngắt quãng SM-2 (Spaced Repetition Flashcard) & Quiz trắc nghiệm
+- Quản lý bài học, từ vựng, ngữ pháp và nhật ký học tập
+- Nhập từ vựng HSK từ file **CSV** hoặc **đường dẫn URL công khai** với cơ chế bảo mật **SSRF Protection**
+
+### 💰 Module Tài chính (Expenses & Recurring Transactions)
+- Ghi nhận giao dịch Thu nhập / Chi tiêu theo Danh mục và Ví
+- **Giao dịch định kỳ (Recurring Transactions)**: Tự động hóa chi tiêu hằng ngày, hằng tuần, hằng tháng, hằng năm với cơ chế chống trùng lặp (Idempotency)
+- Quản lý ngân sách tháng và cảnh báo hạn mức
+- Báo cáo chi tiêu theo biểu đồ tròn & biểu đồ cột
+
+### 📅 Lịch tổng hợp (Aggregated Calendar)
+- Lịch xem theo tháng tổng hợp tất cả sự kiện: Cân nặng, Luyện tập, Bài học tiếng Trung, Ôn tập từ vựng, Giao dịch tài chính, Hạn giao dịch định kỳ, Daily Checklist
+
+### 🏆 Gamification & Thành tích (Achievements & XP)
+- Hệ thống tích lũy XP server-side và tính cấp độ tự động
+- Mở khóa các danh hiệu thành tích theo từng cột mốc (Sức khỏe, Học tập, Tài chính, Tổng hợp)
+- Thông báo mở khóa danh hiệu ngay lập tức khi đạt yêu cầu
+
+### 🌙 Dark Mode & PWA Offline Support
+- Chuyển đổi giao diện Sáng / Tối (Light / Dark mode) đồng bộ và không bị giật trang (flash)
+- Cài đặt PWA trên máy tính & điện thoại di động
+- Hỗ trợ truy cập ứng dụng khi **Ngoại tuyến (Offline)** thông qua Service Worker
+
+---
 
 ## 🛠️ Stack công nghệ
 
-- **Frontend**: Next.js 16 (App Router) + TypeScript
-- **Styling**: Tailwind CSS v4 + Custom Kawaii Design System
-- **Database & Auth**: Supabase (PostgreSQL + RLS)
+- **Framework**: Next.js 16 (App Router) + React 19 + TypeScript
+- **Styling**: Tailwind CSS v4 + Kawaii Design System (CSS Variables)
+- **Database & Backend**: Supabase PostgreSQL + Row Level Security (RLS) + RPC
+- **Command Palette**: `cmdk` (`Ctrl + K` / `Cmd + K`)
 - **Charts**: Recharts
-- **SRS Algorithm**: SM-2 based Spaced Repetition
-- **Fonts**: Nunito (Google Fonts)
+- **PWA**: Web App Manifest & Custom Service Worker
 
-## 🚀 Cài đặt và Chạy
+---
+
+## 🚀 Hướng dẫn Setup Supabase & Chạy ứng dụng
 
 ### 1. Yêu cầu hệ thống
-- Node.js 20+
-- Tài khoản [Supabase](https://supabase.com) (miễn phí)
+- Node.js version 20+
+- Quản lý gói `npm`
+- Tài khoản [Supabase](https://supabase.com)
 
-### 2. Clone và cài đặt
+### 2. Clone repository & Cài đặt thư viện
 ```bash
-git clone <your-repo>
-cd hsk
+git clone https://github.com/doannamquan-rgb/Mochi-Life.git
+cd Mochi-Life
 npm install
 ```
 
-### 3. Tạo Supabase Project
-1. Truy cập [supabase.com](https://supabase.com) → New Project
-2. Chọn region gần nhất (Singapore)
-3. Lưu lại **Project URL** và **anon public key**
-
-### 4. Cấu hình môi trường
-Tạo file `.env.local`:
+### 3. Cấu hình file môi trường `.env.local`
+Tạo file `.env.local` tại thư mục gốc của dự án:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-### 5. Tạo database schema
-Trong Supabase Dashboard → SQL Editor, chạy tuần tự:
-1. `supabase/migrations/0001_initial_schema.sql` — tạo 23 bảng + RLS
-2. `supabase/seed.sql` — dữ liệu mẫu HSK 3
+Lấy `NEXT_PUBLIC_SUPABASE_URL` và `NEXT_PUBLIC_SUPABASE_ANON_KEY` trong **Supabase Dashboard → Project Settings → API**.
 
-### 6. Bật Authentication
-Supabase Dashboard → Authentication → Providers:
-- **Email**: Enabled ✅
-- Tắt "Confirm email" để dễ test
+### 4. Chạy các file Database Migration
+Trong **Supabase Dashboard → SQL Editor**, chạy lần lượt nội dung của 5 file migration theo thứ tự sau:
 
-### 7. Chạy ứng dụng
+1. `supabase/migrations/001_create_tables.sql` — Tạo toàn bộ cấu trúc bảng ban đầu
+2. `supabase/migrations/002_rls_policies.sql` — Thiết lập bảo mật Row Level Security (RLS)
+3. `supabase/migrations/003_seed_achievements.sql` — Khởi tạo danh sách danh hiệu ban đầu
+4. `supabase/migrations/004_generalize_hsk_and_courses.sql` — Tổng quát hóa hệ thống HSK & giao dịch định kỳ
+5. `supabase/migrations/005_xp_gamification_and_achievements.sql` — Bổ sung RPC kiểm tra thành tích & nhật ký XP
+
+### 5. Cấu hình Supabase Authentication
+1. Truy cập **Supabase Dashboard → Authentication → Providers**.
+2. Chọn **Email** → Enabled ✅.
+3. Tắt "Confirm email" (nếu muốn đăng nhập ngay không cần xác nhận email trong môi trường dev).
+4. Thiết lập **Site URL** và **Redirect URLs** phù hợp với domain local (`http://localhost:3000`) hoặc trang deployment.
+
+### 6. Khởi chạy ứng dụng
 ```bash
 npm run dev
 ```
-Mở [http://localhost:3000](http://localhost:3000) 🎉
-
-## 📁 Cấu trúc thư mục
-
-```
-app/
-├── (app)/                    # Authenticated routes
-│   ├── layout.tsx            # App shell (sidebar + bottom nav + FAB)
-│   ├── dashboard/            # Dashboard tổng hợp
-│   ├── fitness/              # Module giảm cân
-│   │   ├── page.tsx          # Overview + charts
-│   │   ├── weight/           # Nhật ký cân nặng
-│   │   ├── exercise/         # Nhật ký luyện tập
-│   │   └── goals/            # Mục tiêu sức khoẻ
-│   ├── chinese/              # Module tiếng Trung
-│   │   ├── page.tsx          # Overview
-│   │   ├── lessons/          # Bài học
-│   │   ├── vocabulary/       # Từ vựng + CRUD
-│   │   │   ├── flashcard/    # Flashcard SRS
-│   │   │   └── quiz/         # Quiz trắc nghiệm
-│   │   ├── grammar/          # Ngữ pháp HSK
-│   │   ├── journal/          # Nhật ký học tập
-│   │   └── review/           # Phiên ôn tập SRS
-│   ├── expenses/             # Module chi tiêu
-│   │   ├── page.tsx          # Giao dịch + form
-│   │   ├── budget/           # Ngân sách tháng
-│   │   └── categories/       # Quản lý danh mục
-│   ├── reports/              # Báo cáo tổng hợp
-│   ├── achievements/         # Thành tích gamification
-│   └── settings/             # Cài đặt tài khoản + data
-├── login/                    # Đăng nhập
-├── register/                 # Đăng ký
-├── forgot-password/          # Quên mật khẩu
-└── onboarding/               # Thiết lập ban đầu
-
-lib/
-├── types.ts                  # TypeScript types (23 tables)
-├── format.ts                 # Formatting + constants
-├── date-utils.ts             # Date helpers (vi locale)
-├── spaced-repetition.ts      # SRS SM-2 algorithm
-└── supabase/
-    ├── client.ts             # Client-side Supabase
-    └── server.ts             # Server-side Supabase
-
-proxy.ts                      # Auth proxy (Next.js 16)
-```
-
-## 🎨 Design System Kawaii
-
-| Tên | Hex | Dùng cho |
-|---|---|---|
-| Cream | `#FFF8F0` | Background |
-| Cheese | `#FFCA1A` | Primary action, CTA |
-| Peach | `#FF7A5C` | Fitness, warning |
-| Mint | `#3BB88E` | Income, success |
-| Lavender | `#8F71F5` | Study, info |
-| Chocolate | `#3D2B1F` | Text chính |
-
-## 📝 Notes kỹ thuật
-
-- Dữ liệu bảo mật qua **Row Level Security (RLS)** — mỗi user chỉ thấy data của mình
-- SRS dùng thuật toán **SM-2** (SuperMemo): interval tự động tăng theo kết quả ôn tập
-- `proxy.ts` = Next.js 16 version của `middleware.ts` (đã migrate)
-- CSS: Tailwind v4 + `@theme` tokens + `style jsx` cho scoped component styles
-- Tất cả giao diện **tiếng Việt** hoàn toàn
+Mở trình duyệt tại: `http://localhost:3000`
 
 ---
-Made with 🐱 and love
+
+## 📥 Định dạng CSV Nhập HSK
+
+Dòng đầu tiên là tiêu đề cột. Mochi Life hỗ trợ nhận diện các cột sau:
+
+```csv
+hanzi,pinyin,meaning,word_type,example_cn,example_vi,level
+学习,xuéxí,học tập,động từ,我每天学习中文。,Tôi học tiếng Trung mỗi ngày.,HSK3
+```
+
+Khi nhập từ URL, ứng dụng được tích hợp **SSRF Protection** chặn các địa chỉ IP nội bộ, loopback, private IPv4/IPv6 và link-local nhằm bảo mật hệ thống.
+
+---
+
+## 🛡️ Kiểm tra & Build Production
+
+Để kiểm tra build production và PWA offline support:
+
+```bash
+npm run build
+npm run start
+```
+
+---
+
+## 🔒 Khắc phục sự cố (Troubleshooting)
+
+- **Lỗi RLS / Không thấy dữ liệu**: Kiểm tra xem user đã đăng nhập chưa và đã chạy file `002_rls_policies.sql` chưa.
+- **Không hiện dữ liệu mẫu**: Đảm bảo hoàn thành các bước Onboarding lần đầu tiên hoặc nhấn "Tạo lại dữ liệu mẫu" trong Cài đặt.
+- **Lỗi Import URL**: Kiểm tra xem URL có truy cập công khai được không và không phải là IP nội bộ (`localhost`, `127.0.0.1`, `10.x.x.x`).

@@ -1,0 +1,16 @@
+{
+  "name": "Mochi Life 🐱",
+  "short_name": "Mochi",
+  "description": "Ứng dụng quản lý mục tiêu cá nhân - Sức khỏe, Học tiếng Trung & Tài chính",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FFCA1A",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

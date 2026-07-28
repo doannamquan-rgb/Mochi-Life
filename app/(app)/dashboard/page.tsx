@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [totalVocab, setTotalVocab] = useState(0)
   const [studyStreak, setStudyStreak] = useState(0)
   const [currentLesson, setCurrentLesson] = useState<HskLesson | null>(null)
+  const [activeCourseInfo, setActiveCourseInfo] = useState({ name: 'Tiếng Trung', level: 'Tổng quan', target: 100 })
 
   // Expense state
   const [todayExpense, setTodayExpense] = useState(0)
@@ -91,6 +92,29 @@ export default function DashboardPage() {
     setTodayStudy(studySess.data)
     setStudyGoal(sGoal.data)
     setCurrentLesson(lesson.data)
+
+    // Active course and vocab stats
+    let courseName = 'Tiếng Trung'
+    let courseLevel = 'Tổng quan'
+    let courseTotalTarget = 100
+
+    if (profile?.active_hsk_course_id) {
+      const { data: activeCourseData } = await supabase.from('hsk_courses').select('*').eq('id', profile.active_hsk_course_id).single()
+      if (activeCourseData) {
+        courseName = activeCourseData.name
+        courseLevel = activeCourseData.level
+        if (activeCourseData.total_vocabulary > 0) courseTotalTarget = activeCourseData.total_vocabulary
+      }
+    } else {
+      const { data: firstCourse } = await supabase.from('hsk_courses').select('*').eq('user_id', user.id).limit(1).single()
+      if (firstCourse) {
+        courseName = firstCourse.name
+        courseLevel = firstCourse.level
+        if (firstCourse.total_vocabulary > 0) courseTotalTarget = firstCourse.total_vocabulary
+      }
+    }
+
+    setActiveCourseInfo({ name: courseName, level: courseLevel, target: courseTotalTarget })
 
     if (vocab.data) {
       setTotalVocab(vocab.data.length)
@@ -151,8 +175,7 @@ export default function DashboardPage() {
     : 0
 
   const budgetUsedPct = monthBudget ? getPercent(monthExpense, monthBudget.amount) : 0
-  const hsk3Total = 300 // Total HSK3 vocabulary
-  const hskProgress = getPercent(totalVocab, hsk3Total)
+  const hskProgress = getPercent(totalVocab, activeCourseInfo.target)
 
   if (loading) {
     return (
@@ -235,7 +258,7 @@ export default function DashboardPage() {
             <div className="module-icon">🈶</div>
             <div>
               <div className="module-title">Tiếng Trung</div>
-              <div className="module-subtitle">HSK 3</div>
+              <div className="module-subtitle">{activeCourseInfo.level}</div>
             </div>
           </div>
 
@@ -257,7 +280,7 @@ export default function DashboardPage() {
 
           <div className="module-progress">
             <div className="progress-label">
-              <span>HSK 3: {totalVocab}/{hsk3Total} từ</span>
+              <span>{activeCourseInfo.level}: {totalVocab}/{activeCourseInfo.target} từ</span>
               <span>{hskProgress}%</span>
             </div>
             <ProgressBar value={hskProgress} max={100} colorClass="study" />

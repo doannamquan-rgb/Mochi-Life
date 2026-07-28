@@ -190,7 +190,7 @@ export default function GrammarPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">✍️ Ngữ pháp HSK 3</h1>
+          <h1 className="page-title">✍️ Ngữ pháp tiếng Trung</h1>
           <p className="page-subtitle">{grammar.length} cấu trúc · {statusCounts['learned'] ?? 0 + (statusCounts['mastered'] ?? 0)} đã học</p>
         </div>
         <button className="mochi-btn mochi-btn-primary mochi-btn-sm" onClick={() => { setEditing(undefined); setShowForm(true) }}>+ Thêm</button>

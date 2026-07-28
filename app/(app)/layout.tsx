@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
+import { SearchPalette } from '@/components/search-palette'
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', emoji: '🏠' },
@@ -38,6 +39,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useUser()
   const [fabOpen, setFabOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  // Service Worker registration & Theme Sync
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(err => {
+        console.error('Service worker registration failed:', err)
+      })
+    }
+
+    if (profile?.theme) {
+      document.documentElement.setAttribute('data-theme', profile.theme)
+      localStorage.setItem('mochi-theme', profile.theme)
+    } else {
+      const savedTheme = localStorage.getItem('mochi-theme') || 'light'
+      document.documentElement.setAttribute('data-theme', savedTheme)
+    }
+  }, [profile])
 
   // Close FAB on route change
   useEffect(() => {
@@ -114,6 +133,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Nav items */}
         <nav className="sidebar-nav">
+          <button
+            type="button"
+            className="mochi-sidebar-item search-trigger-btn"
+            onClick={() => setSearchOpen(true)}
+            style={{ width: 'calc(100% - 16px)', border: 'none', background: 'var(--cheese-50)', color: 'var(--chocolate-600)', marginBottom: 8 }}
+          >
+            <span className="sidebar-item-emoji">🔍</span>
+            <span>Tìm kiếm (Ctrl + K)</span>
+          </button>
           {navItems.map(item => (
             <Link
               key={item.href}
@@ -159,13 +187,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/dashboard" className="mobile-logo">
             🐱 Mochi Life
           </Link>
-          <Link href="/settings" className="settings-btn" aria-label="Cài đặt">
-            ⚙️
-          </Link>
+          <button
+            className="settings-btn"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Tìm kiếm"
+          >
+            🔍
+          </button>
         </header>
 
         {children}
       </main>
+
+      <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
 
       {/* FAB */}
       {fabOpen && (

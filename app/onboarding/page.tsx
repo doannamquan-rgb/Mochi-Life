@@ -28,7 +28,8 @@ export default function OnboardingPage() {
   // Step 2: Chinese
   const [dailyWords, setDailyWords] = useState('10')
   const [dailyMinutes, setDailyMinutes] = useState('30')
-  const [proficiency, setProficiency] = useState('beginner')
+  const [proficiency, setProficiency] = useState('HSK3')
+  const [courseName, setCourseName] = useState('')
 
   // Step 3: Expense
   const [monthBudget, setMonthBudget] = useState('')
@@ -105,17 +106,13 @@ export default function OnboardingPage() {
         daily_new_words: Number(dailyWords),
         daily_review_words: Number(dailyWords) * 2,
         daily_minutes: Number(dailyMinutes),
-        current_hsk_level: 'HSK3',
+        current_hsk_level: proficiency,
         current_proficiency: proficiency,
       }, { onConflict: 'user_id' })
 
-      // Create default HSK course
-      const { data: course } = await supabase.from('hsk_courses').insert({
-        user_id: user.id,
-        name: 'HSK 3 - Giáo trình chuẩn',
-        level: 'HSK3',
-        description: 'Chương trình học tiếng Trung HSK cấp 3',
-      }).select().single()
+      // Seed sample data & course automatically
+      const { seedSampleDataForUser } = await import('@/lib/seed-data')
+      await seedSampleDataForUser(supabase, user.id, proficiency, courseName)
 
       // Create default expense categories
       for (let i = 0; i < DEFAULT_EXPENSE_CATEGORIES.length; i++) {
@@ -267,16 +264,21 @@ export default function OnboardingPage() {
             <div className="step-form">
               <div className="step-title">
                 <span>🈶</span>
-                <h2>Học tiếng Trung HSK 3</h2>
+                <h2>Học tiếng Trung</h2>
               </div>
 
               <div className="form-group">
-                <label className="mochi-label">Trình độ hiện tại</label>
+                <label className="mochi-label">Trình độ & Cấp độ ban đầu</label>
                 <div className="radio-grid">
                   {[
-                    { value: 'beginner', label: 'Mới bắt đầu' },
-                    { value: 'elementary', label: 'Sơ cấp (HSK1-2)' },
-                    { value: 'intermediate', label: 'Trung cấp (HSK3)' },
+                    { value: 'HSK1', label: 'HSK 1' },
+                    { value: 'HSK2', label: 'HSK 2' },
+                    { value: 'HSK3', label: 'HSK 3' },
+                    { value: 'HSK4', label: 'HSK 4' },
+                    { value: 'HSK5', label: 'HSK 5' },
+                    { value: 'HSK6', label: 'HSK 6' },
+                    { value: 'HSK7-9', label: 'HSK 7–9' },
+                    { value: 'Custom', label: 'Tùy chỉnh' },
                   ].map(opt => (
                     <button
                       key={opt.value}
@@ -288,6 +290,17 @@ export default function OnboardingPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="mochi-label">Tên khóa học (không bắt buộc)</label>
+                <input
+                  type="text"
+                  className="mochi-input"
+                  placeholder={`Ví dụ: ${proficiency} Standard Course`}
+                  value={courseName}
+                  onChange={e => setCourseName(e.target.value)}
+                />
               </div>
 
               <div className="form-row">
@@ -325,10 +338,11 @@ export default function OnboardingPage() {
 
               <div className="info-box">
                 <span>ℹ️</span>
-                <p>Giáo trình HSK 3 sẽ được cài đặt sẵn. Bạn có thể thêm từ vựng và ngữ pháp sau khi thiết lập xong.</p>
+                <p>Khóa học ban đầu sẽ được khởi tạo tự động. Bạn có thể thêm từ vựng, ngữ pháp và tạo thêm các khóa học khác bất kỳ lúc nào!</p>
               </div>
             </div>
           )}
+
 
           {step === 3 && (
             <div className="step-form">

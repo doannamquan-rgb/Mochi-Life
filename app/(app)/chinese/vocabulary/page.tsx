@@ -203,7 +203,7 @@ function VocabPageContent() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">🔤 Từ vựng HSK 3</h1>
+          <h1 className="page-title">🔤 Từ vựng tiếng Trung</h1>
           <p className="page-subtitle">{vocab.length} từ · {dueVocab.length} cần ôn hôm nay</p>
         </div>
         <div className="header-actions">

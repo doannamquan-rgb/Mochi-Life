@@ -15,6 +15,7 @@ export type UserProfile = {
   theme: 'light' | 'dark'
   animations_enabled: boolean
   onboarding_completed: boolean
+  active_hsk_course_id: string | null
   created_at: string
   updated_at: string
 }
@@ -112,6 +113,7 @@ export type MemoryLevel = 'not_learned' | 'hard' | 'learning' | 'learned' | 'mas
 export type HskVocabulary = {
   id: string
   user_id: string
+  course_id: string | null
   lesson_id: string | null
   hanzi: string
   pinyin: string
@@ -142,6 +144,7 @@ export type GrammarStatus = 'not_learned' | 'in_progress' | 'learned' | 'mastere
 export type HskGrammar = {
   id: string
   user_id: string
+  course_id: string | null
   lesson_id: string | null
   structure_name: string
   formula: string | null
@@ -257,10 +260,10 @@ export type Transaction = {
   note: string | null
   receipt_url: string | null
   recurring_id: string | null
+  occurrence_date: string | null
   is_sample_data: boolean
   created_at: string
   updated_at: string
-  // Joined fields
   category?: ExpenseCategory
   wallet?: Wallet
 }
@@ -281,7 +284,6 @@ export type Budget = {
   is_sample_data: boolean
   created_at: string
   updated_at: string
-  // Joined
   category?: ExpenseCategory
 }
 
@@ -336,6 +338,15 @@ export type UserAchievement = {
   achievement?: Achievement
 }
 
+export type UserXpLog = {
+  id: string
+  user_id: string
+  amount: number
+  action_type: string
+  reference_id: string | null
+  created_at: string
+}
+
 export type WeeklyReview = {
   id: string
   user_id: string
@@ -365,7 +376,6 @@ export type DataImportJob = {
   updated_at: string
 }
 
-// UI Helper types
 export type DateRange = {
   from: Date
   to: Date

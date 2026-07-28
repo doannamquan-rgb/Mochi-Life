@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
 import { formatVND, formatVNDCompact } from '@/lib/format'
 import { todayString, formatDate } from '@/lib/date-utils'
+import { syncRecurringTransactions } from '@/lib/recurring-sync'
 import type { Transaction, ExpenseCategory, Wallet } from '@/lib/types'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns'
@@ -139,6 +141,10 @@ function ExpensePageContent() {
   async function loadData() {
     if (!user) return
     setLoading(true)
+
+    // Sync recurring transactions
+    await syncRecurringTransactions(user.id)
+
     const supabase = createClient()
     const now = new Date()
     let from = now.toISOString().split('T')[0]
@@ -214,6 +220,7 @@ function ExpensePageContent() {
           <p className="page-subtitle">{periodLabel} · {transactions.length} giao dịch</p>
         </div>
         <div className="header-actions">
+          <Link href="/expenses/recurring" className="mochi-btn mochi-btn-secondary mochi-btn-sm">🔁 Định kỳ</Link>
           <button onClick={exportCSV} className="mochi-btn mochi-btn-secondary mochi-btn-sm">📥 CSV</button>
           <button onClick={() => { setEditingTx(undefined); setShowForm(true) }} className="mochi-btn mochi-btn-primary mochi-btn-sm">+ Thêm</button>
         </div>

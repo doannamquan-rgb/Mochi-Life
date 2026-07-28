@@ -69,7 +69,7 @@
   --color-warning: var(--cheese-400);
   --color-danger: var(--peach-500);
   --color-info: var(--lavender-400);
-  
+
   /* ---- Shadows ---- */
   --shadow-xs: 0 1px 3px rgba(61, 43, 31, 0.05);
   --shadow-sm: 0 2px 8px rgba(61, 43, 31, 0.07);
@@ -89,6 +89,48 @@
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
   --transition-slow: 400ms ease;
+}
+
+/* ---- Dark Mode Tokens ---- */
+[data-theme="dark"] {
+  --cream: #1A1614;
+  --cream-dark: #141110;
+  
+  --chocolate-50: #26201C;
+  --chocolate-100: #332B25;
+  --chocolate-200: #4A3E36;
+  --chocolate-300: #8C7B6E;
+  --chocolate-400: #B3A092;
+  --chocolate-500: #D9C8BA;
+  --chocolate-600: #FFF5EC;
+  --chocolate-700: #FFFFFF;
+
+  --color-background: #1A1614;
+  --color-surface: #26201C;
+  --color-surface-raised: #332B25;
+  --color-border: #4A3E36;
+
+  --color-text-primary: #FFF5EC;
+  --color-text-secondary: #D9C8BA;
+  --color-text-muted: #8C7B6E;
+  --color-text-placeholder: #4A3E36;
+}
+
+[data-theme="dark"] .mochi-card,
+[data-theme="dark"] .mochi-sidebar,
+[data-theme="dark"] .mochi-bottom-nav,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .command-palette-container {
+  background-color: #26201C !important;
+  color: #FFF5EC !important;
+  border-color: #4A3E36 !important;
+}
+
+[data-theme="dark"] .mochi-input,
+[data-theme="dark"] select.mochi-input {
+  background-color: #332B25 !important;
+  color: #FFF5EC !important;
+  border-color: #4A3E36 !important;
 }
 
 /* ============================================================

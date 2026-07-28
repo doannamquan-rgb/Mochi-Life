@@ -183,7 +183,7 @@ export default function LessonsPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">📚 Bài học HSK 3</h1>
+          <h1 className="page-title">📚 Bài học tiếng Trung</h1>
           <p className="page-subtitle">{completedCount}/{lessons.length} bài đã hoàn thành</p>
         </div>
         <button onClick={() => { setEditing(undefined); setShowForm(true) }} className="mochi-btn mochi-btn-primary mochi-btn-sm">

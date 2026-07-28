@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
-import type { UserProfile, WeightGoal, StudyGoal } from '@/lib/types'
+import type { HskCourse } from '@/lib/types'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -13,17 +13,45 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [height, setHeight] = useState('')
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [activeTab, setActiveTab] = useState('profile')
-  const [exportLoading, setExportLoading] = useState(false)
+
+  // Course Management State
+  const [courses, setCourses] = useState<HskCourse[]>([])
+  const [showCourseModal, setShowCourseModal] = useState(false)
+  const [editingCourse, setEditingCourse] = useState<HskCourse | null>(null)
+  const [courseForm, setCourseForm] = useState({
+    name: '',
+    level: 'HSK3',
+    description: '',
+    total_vocabulary: 300,
+    total_lessons: 15,
+  })
+
+  // Sample data management state
   const [deleteConfirm, setDeleteConfirm] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [exportLoading, setExportLoading] = useState(false)
 
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name)
       setHeight(profile.height_cm?.toString() ?? '')
+      setTheme(profile.theme ?? 'light')
     }
   }, [profile])
+
+  useEffect(() => {
+    if (user) {
+      loadCourses()
+    }
+  }, [user])
+
+  async function loadCourses() {
+    if (!user) return
+    const supabase = createClient()
+    const { data } = await supabase.from('hsk_courses').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+    setCourses(data ?? [])
+  }
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault()
@@ -33,9 +61,87 @@ export default function SettingsPage() {
     const { error } = await supabase.from('user_profiles').update({
       display_name: displayName,
       height_cm: height ? Number(height) : null,
+      theme,
     }).eq('user_id', user.id)
+
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('mochi-theme', theme)
+
     if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
-    toast.success('Đã lưu hồ sơ!')
+    toast.success('Đã lưu hồ sơ và cài đặt!')
+    setLoading(false)
+  }
+
+  async function handleSetActiveCourse(courseId: string) {
+    if (!user) return
+    const supabase = createClient()
+    await supabase.from('user_profiles').update({ active_hsk_course_id: courseId }).eq('user_id', user.id)
+    toast.success('Đã thay đổi khóa học đang hoạt động!')
+    window.location.reload()
+  }
+
+  async function handleSaveCourse(e: React.FormEvent) {
+    e.preventDefault()
+    if (!user) return
+    if (!courseForm.name.trim()) { toast.error('Vui lòng nhập tên khóa học'); return }
+
+    const supabase = createClient()
+    setLoading(true)
+
+    if (editingCourse) {
+      const { error } = await supabase.from('hsk_courses').update({
+        name: courseForm.name,
+        level: courseForm.level,
+        description: courseForm.description,
+        total_vocabulary: Number(courseForm.total_vocabulary) || 0,
+        total_lessons: Number(courseForm.total_lessons) || 0,
+      }).eq('id', editingCourse.id)
+
+      if (error) toast.error('Lỗi: ' + error.message)
+      else toast.success('Đã cập nhật khóa học!')
+    } else {
+      const { data: newCourse, error } = await supabase.from('hsk_courses').insert({
+        user_id: user.id,
+        name: courseForm.name,
+        level: courseForm.level,
+        description: courseForm.description,
+        total_vocabulary: Number(courseForm.total_vocabulary) || 0,
+        total_lessons: Number(courseForm.total_lessons) || 0,
+      }).select().single()
+
+      if (error) {
+        toast.error('Lỗi: ' + error.message)
+      } else {
+        toast.success('Đã tạo khóa học mới!')
+        if (courses.length === 0 && newCourse) {
+          await supabase.from('user_profiles').update({ active_hsk_course_id: newCourse.id }).eq('user_id', user.id)
+        }
+      }
+    }
+
+    setLoading(false)
+    setShowCourseModal(false)
+    loadCourses()
+  }
+
+  async function handleDeleteCourse(courseId: string) {
+    if (!user) return
+    if (!confirm('Bạn có chắc chắn muốn xóa khóa học này? Toàn bộ từ vựng và bài học trong khóa học sẽ bị xóa.')) return
+    const supabase = createClient()
+    setLoading(true)
+
+    const { error } = await supabase.from('hsk_courses').delete().eq('id', courseId)
+    if (error) {
+      toast.error('Lỗi khi xóa: ' + error.message)
+    } else {
+      toast.success('Đã xóa khóa học thành công!')
+      if (profile?.active_hsk_course_id === courseId) {
+        const remaining = courses.filter(c => c.id !== courseId)
+        const nextActive = remaining[0]?.id || null
+        await supabase.from('user_profiles').update({ active_hsk_course_id: nextActive }).eq('user_id', user.id)
+      }
+      loadCourses()
+    }
     setLoading(false)
   }
 
@@ -44,11 +150,12 @@ export default function SettingsPage() {
     setExportLoading(true)
     const supabase = createClient()
     try {
-      const [profiles, wGoals, wLogs, exLogs, vocab, grammar, sessions, txs, budgets, cats, wallets] = await Promise.all([
+      const [profiles, wGoals, wLogs, exLogs, courses, vocab, grammar, sessions, txs, budgets, cats, wallets] = await Promise.all([
         supabase.from('user_profiles').select('*').eq('user_id', user.id),
         supabase.from('weight_goals').select('*').eq('user_id', user.id),
         supabase.from('weight_logs').select('*').eq('user_id', user.id),
         supabase.from('exercise_logs').select('*').eq('user_id', user.id),
+        supabase.from('hsk_courses').select('*').eq('user_id', user.id),
         supabase.from('hsk_vocabulary').select('*').eq('user_id', user.id),
         supabase.from('hsk_grammar').select('*').eq('user_id', user.id),
         supabase.from('study_sessions').select('*').eq('user_id', user.id),
@@ -59,13 +166,14 @@ export default function SettingsPage() {
       ])
       const backup = {
         exported_at: new Date().toISOString(),
-        version: '1.0',
+        version: '2.0',
         user_id: user.id,
         data: {
           profile: profiles.data?.[0],
           weight_goals: wGoals.data,
           weight_logs: wLogs.data,
           exercise_logs: exLogs.data,
+          hsk_courses: courses.data,
           hsk_vocabulary: vocab.data,
           hsk_grammar: grammar.data,
           study_sessions: sessions.data,
@@ -99,6 +207,7 @@ export default function SettingsPage() {
       await Promise.all([
         supabase.from('weight_logs').delete().eq('user_id', user.id).eq('is_sample_data', true),
         supabase.from('exercise_logs').delete().eq('user_id', user.id).eq('is_sample_data', true),
+        supabase.from('hsk_courses').delete().eq('user_id', user.id).eq('is_sample_data', true),
         supabase.from('hsk_vocabulary').delete().eq('user_id', user.id).eq('is_sample_data', true),
         supabase.from('hsk_grammar').delete().eq('user_id', user.id).eq('is_sample_data', true),
         supabase.from('study_sessions').delete().eq('user_id', user.id).eq('is_sample_data', true),
@@ -106,8 +215,25 @@ export default function SettingsPage() {
       ])
       toast.success('Đã xóa dữ liệu mẫu!')
       setDeleteConfirm('')
+      loadCourses()
     } catch (e) {
-      toast.error('Có lỗi khi xóa')
+      toast.error('Có lỗi khi xóa dữ liệu mẫu')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleReSeedSampleData() {
+    if (!user) return
+    const supabase = createClient()
+    setLoading(true)
+    try {
+      const { seedSampleDataForUser } = await import('@/lib/seed-data')
+      await seedSampleDataForUser(supabase, user.id, 'HSK3')
+      toast.success('Đã khởi tạo lại dữ liệu mẫu!')
+      loadCourses()
+    } catch (e) {
+      toast.error('Lỗi khi tạo dữ liệu mẫu')
     } finally {
       setLoading(false)
     }
@@ -122,6 +248,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'profile', label: '👤 Hồ sơ' },
+    { id: 'courses', label: '📚 Khóa học' },
     { id: 'data', label: '💾 Dữ liệu' },
     { id: 'about', label: 'ℹ️ Về ứng dụng' },
   ]
@@ -148,6 +275,25 @@ export default function SettingsPage() {
                 <input type="text" className="mochi-input" value={displayName} onChange={e => setDisplayName(e.target.value)} />
               </div>
               <div className="form-group">
+                <label className="mochi-label">Giao diện người dùng</label>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    type="button"
+                    className={`mochi-btn ${theme === 'light' ? 'mochi-btn-primary' : 'mochi-btn-secondary'}`}
+                    onClick={() => setTheme('light')}
+                  >
+                    ☀️ Sáng
+                  </button>
+                  <button
+                    type="button"
+                    className={`mochi-btn ${theme === 'dark' ? 'mochi-btn-primary' : 'mochi-btn-secondary'}`}
+                    onClick={() => setTheme('dark')}
+                  >
+                    🌙 Tối
+                  </button>
+                </div>
+              </div>
+              <div className="form-group">
                 <label className="mochi-label">Chiều cao (cm)</label>
                 <input type="number" className="mochi-input" placeholder="160" value={height} onChange={e => setHeight(e.target.value)} />
               </div>
@@ -170,6 +316,87 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {activeTab === 'courses' && (
+        <div className="settings-section">
+          <div className="mochi-card" style={{ padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 className="section-title" style={{ margin: 0 }}>📚 Quản lý khóa học tiếng Trung</h2>
+              <button
+                className="mochi-btn mochi-btn-primary mochi-btn-sm"
+                onClick={() => {
+                  setEditingCourse(null)
+                  setCourseForm({ name: '', level: 'HSK3', description: '', total_vocabulary: 300, total_lessons: 15 })
+                  setShowCourseModal(true)
+                }}
+              >
+                + Tạo khóa học mới
+              </button>
+            </div>
+
+            {courses.length === 0 ? (
+              <div className="mochi-empty-state" style={{ padding: 24 }}>
+                <div className="mascot">📚</div>
+                <p>Chưa có khóa học nào. Hãy tạo khóa học đầu tiên!</p>
+              </div>
+            ) : (
+              <div className="courses-list">
+                {courses.map(c => {
+                  const isActive = profile?.active_hsk_course_id === c.id
+                  return (
+                    <div key={c.id} className={`course-item-card ${isActive ? 'active-course' : ''}`}>
+                      <div className="course-item-info">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className="course-level-badge">{c.level}</span>
+                          <h3 className="course-item-title">{c.name}</h3>
+                          {isActive && <span className="active-badge">Đang hoạt động</span>}
+                        </div>
+                        <p className="course-item-desc">{c.description || 'Chưa có mô tả'}</p>
+                        <div className="course-item-stats">
+                          <span>Mục tiêu từ vựng: {c.total_vocabulary}</span> · <span>Số bài học: {c.total_lessons}</span>
+                        </div>
+                      </div>
+
+                      <div className="course-item-actions">
+                        {!isActive && (
+                          <button
+                            className="mochi-btn mochi-btn-secondary mochi-btn-sm"
+                            onClick={() => handleSetActiveCourse(c.id)}
+                          >
+                            Chọn làm khóa chính
+                          </button>
+                        )}
+                        <button
+                          className="mochi-btn mochi-btn-ghost mochi-btn-sm"
+                          onClick={() => {
+                            setEditingCourse(c)
+                            setCourseForm({
+                              name: c.name,
+                              level: c.level,
+                              description: c.description || '',
+                              total_vocabulary: c.total_vocabulary,
+                              total_lessons: c.total_lessons,
+                            })
+                            setShowCourseModal(true)
+                          }}
+                        >
+                          Chỉnh sửa
+                        </button>
+                        <button
+                          className="mochi-btn mochi-btn-danger mochi-btn-sm"
+                          onClick={() => handleDeleteCourse(c.id)}
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'data' && (
         <div className="settings-section">
           <div className="mochi-card" style={{ padding: 24 }}>
@@ -188,10 +415,15 @@ export default function SettingsPage() {
           </div>
 
           <div className="danger-section mochi-card" style={{ padding: 24 }}>
-            <h2 className="section-title danger-title">⚠️ Xóa dữ liệu mẫu</h2>
-            <p style={{ fontSize: '0.875rem', color: 'var(--chocolate-400)', fontWeight: 600 }}>
-              Xóa toàn bộ dữ liệu mẫu được tạo khi cài đặt ứng dụng.
+            <h2 className="section-title danger-title">⚠️ Dữ liệu mẫu</h2>
+            <p style={{ fontSize: '0.875rem', color: 'var(--chocolate-400)', fontWeight: 600, marginBottom: 12 }}>
+              Bạn có thể tạo lại hoặc xóa toàn bộ các bản ghi mẫu (có nhãn dữ liệu mẫu) bất kỳ lúc nào.
             </p>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+              <button className="mochi-btn mochi-btn-secondary mochi-btn-sm" onClick={handleReSeedSampleData} disabled={loading}>
+                ✨ Tạo lại dữ liệu mẫu
+              </button>
+            </div>
             <div className="confirm-input-group">
               <input
                 type="text"
@@ -217,49 +449,123 @@ export default function SettingsPage() {
           <div className="mochi-card about-card" style={{ padding: 32 }}>
             <span style={{ fontSize: '4rem' }}>🐱</span>
             <h2 className="about-title">Mochi Life</h2>
-            <p className="about-version">Phiên bản 1.0.0</p>
-            <p className="about-desc">Ứng dụng quản lý mục tiêu cá nhân theo phong cách kawaii. Giúp bạn theo dõi giảm cân, học tiếng Trung HSK 3 và kiểm soát chi tiêu.</p>
+            <p className="about-version">Phiên bản 2.0.0</p>
+            <p className="about-desc">Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi giảm cân, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.</p>
             <div className="about-features">
               <div className="feature-item">💪 Giảm cân & Luyện tập</div>
-              <div className="feature-item">🈶 Học tiếng Trung HSK 3</div>
-              <div className="feature-item">💰 Kiểm soát Chi tiêu</div>
+              <div className="feature-item">🈶 Học tiếng Trung nhiều khóa học</div>
+              <div className="feature-item">💰 Kiểm soát Chi tiêu & Giao dịch định kỳ</div>
+              <div className="feature-item">📅 Lịch tổng hợp & Thành tích</div>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--chocolate-300)', fontWeight: 600, marginTop: 8 }}>Made with 🐱 and love</p>
           </div>
         </div>
       )}
 
+      {/* Course Modal */}
+      {showCourseModal && (
+        <div className="modal-overlay" onClick={() => setShowCourseModal(false)}>
+          <div className="modal-content animate-bounce-in" onClick={e => e.stopPropagation()}>
+            <h2>{editingCourse ? 'Chỉnh sửa khóa học' : 'Tạo khóa học mới'}</h2>
+            <form onSubmit={handleSaveCourse} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+              <div className="form-group">
+                <label className="mochi-label">Tên khóa học *</label>
+                <input
+                  type="text"
+                  className="mochi-input"
+                  placeholder="Ví dụ: HSK 5 Standard Course"
+                  value={courseForm.name}
+                  onChange={e => setCourseForm({ ...courseForm, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="mochi-label">Cấp độ</label>
+                <select
+                  className="mochi-input"
+                  value={courseForm.level}
+                  onChange={e => setCourseForm({ ...courseForm, level: e.target.value })}
+                >
+                  <option value="HSK1">HSK 1</option>
+                  <option value="HSK2">HSK 2</option>
+                  <option value="HSK3">HSK 3</option>
+                  <option value="HSK4">HSK 4</option>
+                  <option value="HSK5">HSK 5</option>
+                  <option value="HSK6">HSK 6</option>
+                  <option value="HSK7-9">HSK 7–9</option>
+                  <option value="Custom">Tùy chỉnh</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="mochi-label">Mô tả</label>
+                <input
+                  type="text"
+                  className="mochi-input"
+                  placeholder="Mô tả ngắn gọn về khóa học"
+                  value={courseForm.description}
+                  onChange={e => setCourseForm({ ...courseForm, description: e.target.value })}
+                />
+              </div>
+
+              <div className="form-row" style={{ display: 'flex', gap: 12 }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="mochi-label">Tổng từ vựng mục tiêu</label>
+                  <input
+                    type="number"
+                    className="mochi-input"
+                    value={courseForm.total_vocabulary}
+                    onChange={e => setCourseForm({ ...courseForm, total_vocabulary: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="mochi-label">Số bài học</label>
+                  <input
+                    type="number"
+                    className="mochi-input"
+                    value={courseForm.total_lessons}
+                    onChange={e => setCourseForm({ ...courseForm, total_lessons: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
+                <button type="button" className="mochi-btn mochi-btn-secondary" onClick={() => setShowCourseModal(false)}>
+                  Hủy
+                </button>
+                <button type="submit" className="mochi-btn mochi-btn-primary" disabled={loading}>
+                  {loading ? 'Đang lưu...' : 'Lưu khóa học'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
-        .page { max-width: 700px; margin: 0 auto; padding-bottom: 32px; display: flex; flex-direction: column; gap: 20px; }
+        .page { max-width: 750px; margin: 0 auto; padding-bottom: 32px; display: flex; flex-direction: column; gap: 20px; }
         .page-title { font-size: 1.5rem; font-weight: 800; color: var(--chocolate-600); margin: 0; }
         .settings-tabs { display: flex; background: white; border-radius: 20px; padding: 4px; box-shadow: var(--shadow-sm); border: 1.5px solid var(--chocolate-100); gap: 4px; }
-        .tab-btn { flex: 1; padding: 10px 16px; border-radius: 16px; border: none; background: transparent; color: var(--chocolate-400); font-weight: 700; font-size: 0.875rem; cursor: pointer; transition: all 0.15s; font-family: 'Nunito', sans-serif; }
-        .tab-btn.active { background: var(--cream); color: var(--chocolate-600); box-shadow: var(--shadow-xs); }
+        .tab-btn { flex: 1; padding: 8px 12px; border: none; background: none; border-radius: 16px; font-weight: 700; font-size: 0.85rem; color: var(--chocolate-400); cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { background: var(--cheese-100); color: var(--chocolate-600); }
         .settings-section { display: flex; flex-direction: column; gap: 16px; }
-        .section-title { font-size: 1rem; font-weight: 800; color: var(--chocolate-600); margin: 0 0 20px; }
-        .settings-form { display: flex; flex-direction: column; gap: 16px; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .field-hint { font-size: 0.75rem; color: var(--chocolate-300); font-weight: 600; }
-        .danger-zone { background: white; border-radius: 20px; padding: 24px; border: 1.5px solid var(--peach-200); }
-        .danger-section { border: 1.5px solid var(--peach-200) !important; }
-        .danger-title { color: var(--peach-500) !important; }
-        .danger-zone p { font-size: 0.875rem; color: var(--chocolate-400); font-weight: 600; margin: 8px 0 16px; }
-        .data-actions { display: flex; flex-direction: column; gap: 12px; }
-        .data-action-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; background: var(--cream); border-radius: 14px; flex-wrap: wrap; }
-        .da-title { font-size: 0.9rem; font-weight: 700; color: var(--chocolate-600); margin-bottom: 3px; }
-        .da-desc { font-size: 0.78rem; color: var(--chocolate-400); font-weight: 600; }
-        .confirm-input-group { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-        .confirm-input-group .mochi-input { flex: 1; min-width: 180px; }
-        .about-card { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
-        .about-title { font-size: 1.5rem; font-weight: 800; color: var(--chocolate-600); margin: 0; }
-        .about-version { font-size: 0.82rem; color: var(--chocolate-300); font-weight: 700; margin: 0; background: var(--cream); padding: 3px 12px; border-radius: 999px; }
-        .about-desc { font-size: 0.9rem; color: var(--chocolate-500); font-weight: 600; line-height: 1.6; max-width: 400px; margin: 0; }
-        .about-features { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 300px; }
-        .feature-item { background: var(--cream); padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 0.875rem; color: var(--chocolate-600); text-align: left; }
-        @media (max-width: 480px) {
-          .settings-tabs { flex-direction: column; }
-          .tab-btn { text-align: left; }
-        }
+        .section-title { font-size: 1.1rem; font-weight: 800; color: var(--chocolate-600); margin: 0 0 16px; }
+        .settings-form { display: flex; flex-direction: column; gap: 14px; }
+        .danger-zone { background: white; border-radius: 24px; padding: 20px; border: 1.5px solid var(--peach-200); display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+        .danger-title { color: var(--peach-500); margin: 0 0 4px; font-size: 1rem; }
+        .courses-list { display: flex; flex-direction: column; gap: 12px; }
+        .course-item-card { background: var(--cream); border-radius: 18px; padding: 16px; border: 1.5px solid var(--chocolate-100); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .course-item-card.active-course { border-color: var(--lavender-400); background: var(--lavender-50); }
+        .course-level-badge { background: var(--lavender-400); color: white; font-weight: 800; font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
+        .active-badge { background: var(--mint-400); color: white; font-weight: 800; font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
+        .course-item-title { font-weight: 800; font-size: 0.95rem; margin: 0; color: var(--chocolate-600); }
+        .course-item-desc { font-size: 0.8rem; color: var(--chocolate-400); margin: 2px 0 4px; }
+        .course-item-stats { font-size: 0.75rem; color: var(--chocolate-500); font-weight: 600; }
+        .course-item-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .modal-content { background: white; border-radius: 24px; padding: 24px; max-width: 500px; width: 100%; box-shadow: var(--shadow-lg); }
+        .confirm-input-group { display: flex; gap: 8px; margin-top: 8px; }
       `}</style>
     </div>
   )
