@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { fetchFitnessStats, type FitnessStats } from '@/lib/fitness-stats'
 import { formatWeight, formatDuration, getPercent, EXERCISE_TYPES, getExerciseLabel, getExerciseIcon, INTENSITY_LABELS } from '@/lib/format'
-import { formatDate, todayString, getDateRange } from '@/lib/date-utils'
-import type { WeightLog, WeightGoal, ExerciseLog, FitnessGoal } from '@/lib/types'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
-import { format, parseISO, subDays } from 'date-fns'
+import { formatDate, todayString } from '@/lib/date-utils'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
 function StatCard({ emoji, title, value, sub, color }: { emoji: string; title: string; value: React.ReactNode; sub?: string; color: string }) {
@@ -25,59 +26,43 @@ function StatCard({ emoji, title, value, sub, color }: { emoji: string; title: s
 export default function FitnessOverviewPage() {
   const { user } = useUser()
   const [loading, setLoading] = useState(true)
-  const [weightGoal, setWeightGoal] = useState<WeightGoal | null>(null)
-  const [weightLogs, setWeightLogs] = useState<WeightLog[]>([])
-  const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([])
-  const [fitnessGoal, setFitnessGoal] = useState<FitnessGoal | null>(null)
+  const [stats, setStats] = useState<FitnessStats | null>(null)
   const [period, setPeriod] = useState<'7d' | '30d' | '3m'>('30d')
-  const today = todayString()
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!user) return
-    loadData()
-  }, [user, period])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
+    setErrorMsg(null)
     const supabase = createClient()
-    const { from } = getDateRange(period)
-    const fromStr = from.toISOString().split('T')[0]
+    try {
+      const res = await fetchFitnessStats(supabase, user.id, period)
+      setStats(res)
+      if (res.error) {
+        setErrorMsg('Lỗi khi tải dữ liệu thể thao: ' + res.error)
+      }
+    } catch (err: any) {
+      console.error('Failed to load fitness stats:', err)
+      setErrorMsg('Không thể kết nối để lấy dữ liệu thể thao.')
+    } finally {
+      setLoading(false)
+    }
+  }, [user, period])
 
-    const [wGoal, wLogs, exLogs, fGoal] = await Promise.all([
-      supabase.from('weight_goals').select('*').eq('user_id', user.id).single(),
-      supabase.from('weight_logs').select('*').eq('user_id', user.id).gte('log_date', fromStr).order('log_date'),
-      supabase.from('exercise_logs').select('*').eq('user_id', user.id).gte('log_date', fromStr).order('log_date', { ascending: false }),
-      supabase.from('fitness_goals').select('*').eq('user_id', user.id).single(),
-    ])
+  useEffect(() => {
+    if (user) loadData()
+  }, [user, loadData])
 
-    setWeightGoal(wGoal.data)
-    setWeightLogs(wLogs.data ?? [])
-    setExerciseLogs(exLogs.data ?? [])
-    setFitnessGoal(fGoal.data)
-    setLoading(false)
-  }
+  useDataChanged('fitness', loadData)
 
-  const todayExercise = exerciseLogs.filter(e => e.log_date === today)
-  const todayCalories = todayExercise.reduce((s, e) => s + (e.calories_burned ?? 0), 0)
-  const todayMinutes = todayExercise.reduce((s, e) => s + e.duration_minutes, 0)
+  const weightGoal = stats?.weightGoal ?? null
+  const fitnessGoal = stats?.fitnessGoal ?? null
+  const weightLogs = stats?.weightLogs ?? []
+  const exerciseLogs = stats?.exerciseLogs ?? []
+  const latestWeight = stats?.latestWeight ?? null
+  const weightChange = stats?.weightChange ?? null
 
-  const latestWeight = weightLogs[weightLogs.length - 1]
-  const prevWeight = weightLogs[weightLogs.length - 2]
-  const weightChange = latestWeight && prevWeight ? latestWeight.weight - prevWeight.weight : null
-
-  const totalCalories = exerciseLogs.reduce((s, e) => s + (e.calories_burned ?? 0), 0)
-  const totalMinutes = exerciseLogs.reduce((s, e) => s + e.duration_minutes, 0)
-
-  // Weekly stats
-  const now = new Date()
-  const weekStart = subDays(now, now.getDay())
-  const thisWeekEx = exerciseLogs.filter(e => new Date(e.log_date) >= weekStart)
-  const weekSessions = thisWeekEx.length
-  const weekMinutes = thisWeekEx.reduce((s, e) => s + e.duration_minutes, 0)
-  const weekCalories = thisWeekEx.reduce((s, e) => s + (e.calories_burned ?? 0), 0)
-
-  // Chart data
+  // Chart data for weight (sorted ascending by log_date)
   const weightChartData = weightLogs.map(w => ({
     date: format(parseISO(w.log_date), 'd/M', { locale: vi }),
     weight: w.weight,
@@ -90,21 +75,21 @@ export default function FitnessOverviewPage() {
     const d = format(parseISO(e.log_date), 'd/M', { locale: vi })
     exByDay[d] = (exByDay[d] ?? 0) + (e.calories_burned ?? 0)
   })
-  const exChartData = Object.entries(exByDay).map(([date, calories]) => ({ date, calories }))
+  const exChartData = Object.entries(exByDay).map(([date, calories]) => ({ date, calories })).reverse()
 
-  // Exercise type distribution
-  const exTypeCount: Record<string, number> = {}
-  exerciseLogs.forEach(e => {
-    exTypeCount[e.exercise_type] = (exTypeCount[e.exercise_type] ?? 0) + 1
-  })
-  const topExType = Object.entries(exTypeCount).sort((a, b) => b[1] - a[1])[0]
+  const weightProgress = stats?.weightProgress ?? 0
 
-  const weightProgress = weightGoal
-    ? getPercent(
-        weightGoal.starting_weight - (latestWeight?.weight ?? weightGoal.starting_weight),
-        weightGoal.starting_weight - weightGoal.target_weight
-      )
-    : 0
+  if (loading && !stats) {
+    return (
+      <div className="page">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 900, margin: '0 auto' }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="mochi-skeleton" style={{ height: 160, borderRadius: 24 }} />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="page">
@@ -118,6 +103,13 @@ export default function FitnessOverviewPage() {
           <Link href="/fitness/exercise?action=add" className="mochi-btn mochi-btn-primary mochi-btn-sm">+ Thêm buổi tập</Link>
         </div>
       </div>
+
+      {errorMsg && (
+        <div style={{ background: '#FFF4F0', border: '1.5px solid var(--peach-300)', padding: '12px 16px', borderRadius: 16, color: 'var(--peach-600)', fontWeight: 700, fontSize: '0.85rem', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>⚠️ {errorMsg}</span>
+          <button className="mochi-btn mochi-btn-sm mochi-btn-secondary" onClick={loadData}>Thử lại</button>
+        </div>
+      )}
 
       {/* Period filter */}
       <div className="period-filter">
@@ -151,15 +143,15 @@ export default function FitnessOverviewPage() {
         <StatCard
           emoji="🔥"
           title="Calo hôm nay"
-          value={`${todayCalories} kcal`}
-          sub={todayMinutes > 0 ? `${todayMinutes} phút tập` : 'Chưa tập hôm nay'}
+          value={`${stats?.todayCalories ?? 0} kcal`}
+          sub={(stats?.todayMinutes ?? 0) > 0 ? `${stats?.todayMinutes} phút tập` : 'Chưa tập hôm nay'}
           color="#8F71F5"
         />
         <StatCard
           emoji="📅"
           title="Buổi tập tuần này"
-          value={`${weekSessions}/${fitnessGoal?.weekly_sessions ?? 4}`}
-          sub={`${weekMinutes} phút · ${weekCalories} kcal`}
+          value={`${stats?.weekSessions ?? 0}/${fitnessGoal?.weekly_sessions ?? 4}`}
+          sub={`${stats?.weekMinutes ?? 0} phút · ${stats?.weekCalories ?? 0} kcal`}
           color="#3BB88E"
         />
       </div>

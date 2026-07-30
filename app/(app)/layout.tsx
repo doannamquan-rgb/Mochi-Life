@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
 import { SearchPalette } from '@/components/search-palette'
+import { AppleHomeButton } from '@/components/apple-home-button'
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', emoji: '🏠' },
@@ -286,6 +287,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
+      <AppleHomeButton onOpenSearch={() => setSearchOpen(true)} />
 
       {/* FAB */}
       {fabOpen && (

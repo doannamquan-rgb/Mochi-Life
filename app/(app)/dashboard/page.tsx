@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { fetchChineseStats, type ChineseStats } from '@/lib/chinese-stats'
+import { fetchFitnessStats, type FitnessStats } from '@/lib/fitness-stats'
 import { getGreeting, formatDate, todayString, getDateRange } from '@/lib/date-utils'
 import { formatVND, formatVNDCompact, formatWeight, formatDuration, getPercent, EXERCISE_TYPES } from '@/lib/format'
 import type { WeightLog, WeightGoal, ExerciseLog, FitnessGoal, StudySession, StudyGoal, Transaction, Budget, ExpenseCategory, HskVocabulary, HskLesson } from '@/lib/types'
@@ -35,20 +38,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const today = todayString()
 
-  // Fitness state
-  const [weightGoal, setWeightGoal] = useState<WeightGoal | null>(null)
-  const [latestWeight, setLatestWeight] = useState<WeightLog | null>(null)
-  const [todayExercise, setTodayExercise] = useState<ExerciseLog[]>([])
-  const [fitnessGoal, setFitnessGoal] = useState<FitnessGoal | null>(null)
-
-  // Chinese state
-  const [todayStudy, setTodayStudy] = useState<StudySession | null>(null)
-  const [studyGoal, setStudyGoal] = useState<StudyGoal | null>(null)
-  const [dueVocab, setDueVocab] = useState(0)
-  const [totalVocab, setTotalVocab] = useState(0)
-  const [studyStreak, setStudyStreak] = useState(0)
+  const [cStats, setCStats] = useState<ChineseStats | null>(null)
+  const [fStats, setFStats] = useState<FitnessStats | null>(null)
   const [currentLesson, setCurrentLesson] = useState<HskLesson | null>(null)
-  const [activeCourseInfo, setActiveCourseInfo] = useState({ name: 'Tiếng Trung', level: 'Tổng quan', target: 100 })
 
   // Expense state
   const [todayExpense, setTodayExpense] = useState(0)
@@ -56,71 +48,24 @@ export default function DashboardPage() {
   const [monthBudget, setMonthBudget] = useState<Budget | null>(null)
   const [topCategory, setTopCategory] = useState<string>('')
 
-  // Recent activity
-  const [recentActivity, setRecentActivity] = useState<Array<{ type: string; label: string; emoji: string; time: string }>>([]
-  )
-
-  useEffect(() => {
-    if (!user) return
-    loadDashboardData()
-  }, [user])
-
-  async function loadDashboardData() {
+  const loadDashboardData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
     const now = new Date()
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
-    const [wGoal, wLog, exLogs, fGoal, studySess, sGoal, vocab, transactions, budget, lesson] = await Promise.all([
-      supabase.from('weight_goals').select('*').eq('user_id', user.id).single(),
-      supabase.from('weight_logs').select('*').eq('user_id', user.id).order('log_date', { ascending: false }).limit(1).single(),
-      supabase.from('exercise_logs').select('*').eq('user_id', user.id).eq('log_date', today),
-      supabase.from('fitness_goals').select('*').eq('user_id', user.id).single(),
-      supabase.from('study_sessions').select('*').eq('user_id', user.id).eq('session_date', today).single(),
-      supabase.from('study_goals').select('*').eq('user_id', user.id).single(),
-      supabase.from('hsk_vocabulary').select('id, next_review_at, memory_level').eq('user_id', user.id),
+    const [chineseRes, fitnessRes, transactions, budget, lesson] = await Promise.all([
+      fetchChineseStats(supabase, user.id, profile?.active_hsk_course_id),
+      fetchFitnessStats(supabase, user.id, '30d'),
       supabase.from('transactions').select('amount, type, transaction_date, description, category:expense_categories(name, icon)').eq('user_id', user.id).gte('transaction_date', monthStart).order('transaction_date', { ascending: false }),
-      supabase.from('budgets').select('*').eq('user_id', user.id).eq('is_total_budget', true).eq('month', now.getMonth() + 1).eq('year', now.getFullYear()).single(),
-      supabase.from('hsk_lessons').select('*').eq('user_id', user.id).eq('status', 'in_progress').order('updated_at', { ascending: false }).limit(1).single(),
+      supabase.from('budgets').select('*').eq('user_id', user.id).eq('is_total_budget', true).eq('month', now.getMonth() + 1).eq('year', now.getFullYear()).maybeSingle(),
+      supabase.from('hsk_lessons').select('*').eq('user_id', user.id).eq('status', 'in_progress').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
     ])
 
-    setWeightGoal(wGoal.data)
-    setLatestWeight(wLog.data)
-    setTodayExercise(exLogs.data ?? [])
-    setFitnessGoal(fGoal.data)
-    setTodayStudy(studySess.data)
-    setStudyGoal(sGoal.data)
-    setCurrentLesson(lesson.data)
-
-    // Active course and vocab stats
-    let courseName = 'Tiếng Trung'
-    let courseLevel = 'Tổng quan'
-    let courseTotalTarget = 100
-
-    if (profile?.active_hsk_course_id) {
-      const { data: activeCourseData } = await supabase.from('hsk_courses').select('*').eq('id', profile.active_hsk_course_id).single()
-      if (activeCourseData) {
-        courseName = activeCourseData.name
-        courseLevel = activeCourseData.level
-        if (activeCourseData.total_vocabulary > 0) courseTotalTarget = activeCourseData.total_vocabulary
-      }
-    } else {
-      const { data: firstCourse } = await supabase.from('hsk_courses').select('*').eq('user_id', user.id).limit(1).single()
-      if (firstCourse) {
-        courseName = firstCourse.name
-        courseLevel = firstCourse.level
-        if (firstCourse.total_vocabulary > 0) courseTotalTarget = firstCourse.total_vocabulary
-      }
-    }
-
-    setActiveCourseInfo({ name: courseName, level: courseLevel, target: courseTotalTarget })
-
-    if (vocab.data) {
-      setTotalVocab(vocab.data.length)
-      const due = vocab.data.filter((v: any) => v.memory_level !== 'not_learned' && new Date(v.next_review_at) <= new Date()).length
-      setDueVocab(due)
-    }
+    setCStats(chineseRes)
+    setFStats(fitnessRes)
+    setCurrentLesson(lesson.data ?? null)
 
     // Calculate expense stats
     const txData: any[] = transactions.data ?? []
@@ -128,7 +73,7 @@ export default function DashboardPage() {
     const monthTx = txData.filter((t: any) => t.type === 'expense')
     setTodayExpense(todayTx.reduce((sum: number, t: any) => sum + t.amount, 0))
     setMonthExpense(monthTx.reduce((sum: number, t: any) => sum + t.amount, 0))
-    setMonthBudget(budget.data)
+    setMonthBudget(budget.data ?? null)
 
     // Top category
     const catMap: Record<string, number> = {}
@@ -139,43 +84,23 @@ export default function DashboardPage() {
     const topCat = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0]
     setTopCategory(topCat ? `${topCat[0]}` : '')
 
-    // Calculate study streak
-    const { data: sessions } = await supabase
-      .from('study_sessions')
-      .select('session_date')
-      .eq('user_id', user.id)
-      .order('session_date', { ascending: false })
-      .limit(60)
-
-    if (sessions) {
-      let streak = 0
-      const dateSet = new Set((sessions as Array<{ session_date: string }>).map((s: any) => s.session_date))
-      const checkDate = new Date()
-      while (true) {
-        const ds = checkDate.toISOString().split('T')[0]
-        if (dateSet.has(ds)) {
-          streak++
-          checkDate.setDate(checkDate.getDate() - 1)
-        } else break
-      }
-      setStudyStreak(streak)
-    }
-
     setLoading(false)
-  }
+  }, [user, profile?.active_hsk_course_id, today])
+
+  useEffect(() => {
+    if (user) loadDashboardData()
+  }, [user, loadDashboardData])
+
+  useDataChanged('all', loadDashboardData)
 
   const greeting = getGreeting()
-  const todayCalories = todayExercise.reduce((sum, e) => sum + (e.calories_burned ?? 0), 0)
-  const todayMinutes = todayExercise.reduce((sum, e) => sum + e.duration_minutes, 0)
-  const weightProgress = weightGoal
-    ? getPercent(
-        (weightGoal.starting_weight - (latestWeight?.weight ?? weightGoal.starting_weight)),
-        (weightGoal.starting_weight - weightGoal.target_weight)
-      )
-    : 0
+  const latestWeight = fStats?.latestWeight ?? null
+  const weightGoal = fStats?.weightGoal ?? null
+  const todayCalories = fStats?.todayCalories ?? 0
+  const todayMinutes = fStats?.todayMinutes ?? 0
+  const weightProgress = fStats?.weightProgress ?? 0
 
   const budgetUsedPct = monthBudget ? getPercent(monthExpense, monthBudget.amount) : 0
-  const hskProgress = getPercent(totalVocab, activeCourseInfo.target)
 
   if (loading) {
     return (
@@ -258,32 +183,32 @@ export default function DashboardPage() {
             <div className="module-icon">🈶</div>
             <div>
               <div className="module-title">Tiếng Trung</div>
-              <div className="module-subtitle">{activeCourseInfo.level}</div>
+              <div className="module-subtitle">{cStats?.activeCourse?.level ?? 'Tổng quan'}</div>
             </div>
           </div>
 
           <div className="module-stats">
             <StatItem
               label="Từ mới hôm nay"
-              value={todayStudy?.new_words_count ?? 0}
+              value={cStats?.newTodayVocabulary ?? 0}
             />
             <StatItem
               label="Cần ôn"
-              value={dueVocab}
+              value={cStats?.dueVocabulary ?? 0}
               sub="từ"
             />
             <StatItem
               label="Chuỗi ngày"
-              value={`${studyStreak} 🔥`}
+              value={`${cStats?.streak ?? 0} 🔥`}
             />
           </div>
 
           <div className="module-progress">
             <div className="progress-label">
-              <span>{activeCourseInfo.level}: {totalVocab}/{activeCourseInfo.target} từ</span>
-              <span>{hskProgress}%</span>
+              <span>{cStats?.activeCourse?.name ?? 'Khóa học'}: {cStats?.learnedVocabulary ?? 0}/{cStats?.targetVocabulary ?? 1} từ</span>
+              <span>{cStats?.progressPercent ?? 0}%</span>
             </div>
-            <ProgressBar value={hskProgress} max={100} colorClass="study" />
+            <ProgressBar value={cStats?.progressPercent ?? 0} max={100} colorClass="study" />
           </div>
 
           {currentLesson && (

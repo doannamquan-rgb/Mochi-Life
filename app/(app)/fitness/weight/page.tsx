@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { notifyDataChanged } from '@/lib/events'
 import { toast } from 'sonner'
 import { formatDate, todayString } from '@/lib/date-utils'
 import type { WeightLog, WeightGoal } from '@/lib/types'
@@ -92,6 +94,7 @@ function WeightForm({ onClose, onSaved, existing }: {
     await supabase.from('weight_goals').update({ current_weight: Number(weight) }).eq('user_id', user.id)
 
     toast.success(existing ? 'Cập nhật bản ghi cân nặng thành công!' : 'Đã ghi lại cân nặng thành công! 🎉')
+    notifyDataChanged('fitness', 'weight')
     onSaved()
     onClose()
   }
@@ -222,6 +225,8 @@ function WeightPageContent() {
 
   useEffect(() => { if (user) loadData() }, [user, period])
 
+  useDataChanged('fitness', loadData)
+
   async function loadData() {
     if (!user) return
     setLoading(true)
@@ -232,7 +237,7 @@ function WeightPageContent() {
       const from = new Date(); from.setDate(from.getDate() - days)
       query = query.gte('log_date', from.toISOString().split('T')[0])
     }
-    const [logsRes, goalRes] = await Promise.all([query, supabase.from('weight_goals').select('*').eq('user_id', user.id).single()])
+    const [logsRes, goalRes] = await Promise.all([query, supabase.from('weight_goals').select('*').eq('user_id', user.id).maybeSingle()])
     setLogs(logsRes.data ?? [])
     setGoal(goalRes.data)
     setLoading(false)
@@ -244,6 +249,7 @@ function WeightPageContent() {
     const { error } = await supabase.from('weight_logs').delete().eq('id', id)
     if (error) { toast.error('Không thể xóa bản ghi'); return }
     toast.success('Đã xóa bản ghi')
+    notifyDataChanged('fitness', 'weight')
     loadData()
   }
 

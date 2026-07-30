@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { notifyDataChanged } from '@/lib/events'
 import { toast } from 'sonner'
 import { formatDate, todayString } from '@/lib/date-utils'
 import { MEMORY_LEVEL_LABELS, WORD_TYPE_LABELS } from '@/lib/format'
@@ -153,6 +155,7 @@ function VocabForm({ onClose, onSaved, lessons, activeCourseId, existing }: {
     }
 
     toast.success(existing ? 'Đã cập nhật từ vựng thành công!' : `Đã thêm từ vựng "${hanzi}" thành công! 🎉`)
+    notifyDataChanged('chinese', 'vocabulary', payload.course_id ?? undefined)
     onSaved()
     onClose()
   }
@@ -383,6 +386,8 @@ function VocabPageContent() {
     if (user) loadData()
   }, [user, activeCourseId])
 
+  useDataChanged('chinese', loadData)
+
   async function loadData() {
     if (!user) return
     setLoading(true)
@@ -470,6 +475,7 @@ function VocabPageContent() {
     } else {
       toast.info(`Đã chuyển "${v.hanzi}" về Chưa học`)
     }
+    notifyDataChanged('chinese', 'vocabulary', v.course_id ?? activeCourseId)
   }
 
   async function deleteVocab(id: string) {
@@ -481,6 +487,7 @@ function VocabPageContent() {
       return
     }
     toast.success('Đã xóa từ vựng')
+    notifyDataChanged('chinese', 'vocabulary')
     loadData()
   }
 

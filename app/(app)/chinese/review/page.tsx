@@ -7,6 +7,7 @@ import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
 import { calculateNextReview } from '@/lib/spaced-repetition'
 import { MEMORY_LEVEL_LABELS } from '@/lib/format'
+import { notifyDataChanged } from '@/lib/events'
 import type { HskVocabulary, ReviewRating } from '@/lib/types'
 import { formatDate } from '@/lib/date-utils'
 
@@ -86,6 +87,8 @@ export default function ReviewPage() {
         is_correct: isCorrect,
       }),
     ])
+
+    notifyDataChanged('chinese', 'review')
 
     setStats(s => ({ ...s, [rating]: s[rating as keyof typeof s] + 1 }))
 

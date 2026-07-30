@@ -1,22 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
-import { todayString } from '@/lib/date-utils'
-import { MEMORY_LEVEL_LABELS, LESSON_STATUS_LABELS } from '@/lib/format'
-import type { HskCourse, HskLesson, HskVocabulary, StudySession, StudyGoal } from '@/lib/types'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { fetchChineseStats, type ChineseStats } from '@/lib/chinese-stats'
+import { notifyDataChanged } from '@/lib/events'
 import { toast } from 'sonner'
-
-const MEMORY_COLORS = {
-  not_learned: '#D9C4A8',
-  hard: '#FF7A5C',
-  learning: '#FFCA1A',
-  learned: '#3BB88E',
-  mastered: '#8F71F5',
-}
 
 function ProgressRing({ value, max, color, size = 80 }: { value: number; max: number; color: string; size?: number }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
@@ -25,10 +16,14 @@ function ProgressRing({ value, max, color, size = 80 }: { value: number; max: nu
   const offset = circumference - (pct / 100) * circumference
   return (
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#F0E6D8" strokeWidth={5} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#F0E6D8" strokeWidth={5} />
       <circle
-        cx={size/2} cy={size/2} r={r} fill="none"
-        stroke={color} strokeWidth={5}
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={5}
         strokeDasharray={circumference}
         strokeDashoffset={offset}
         strokeLinecap="round"
@@ -41,112 +36,87 @@ function ProgressRing({ value, max, color, size = 80 }: { value: number; max: nu
 export default function ChinesePage() {
   const { user, profile } = useUser()
   const [loading, setLoading] = useState(true)
-  const [courses, setCourses] = useState<HskCourse[]>([])
-  const [activeCourse, setActiveCourse] = useState<HskCourse | null>(null)
-  const [lessons, setLessons] = useState<HskLesson[]>([])
-  const [vocabulary, setVocabulary] = useState<HskVocabulary[]>([])
-  const [todaySession, setTodaySession] = useState<StudySession | null>(null)
-  const [studyGoal, setStudyGoal] = useState<StudyGoal | null>(null)
-  const [streak, setStreak] = useState(0)
+  const [stats, setStats] = useState<ChineseStats | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const today = todayString()
-
-  useEffect(() => {
-    if (!user) return
-    loadData()
-  }, [user, profile?.active_hsk_course_id])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
+    setErrorMsg(null)
     const supabase = createClient()
-
-    // 1. Fetch all user courses
-    const { data: userCourses } = await supabase.from('hsk_courses').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
-    const allCourses: HskCourse[] = userCourses ?? []
-    setCourses(allCourses)
-
-    let currentActive: HskCourse | null = null
-    if (profile?.active_hsk_course_id) {
-      currentActive = allCourses.find(c => c.id === profile.active_hsk_course_id) ?? null
-    }
-    if (!currentActive && allCourses.length > 0) {
-      currentActive = allCourses[0]
-    }
-    setActiveCourse(currentActive)
-
-    if (currentActive) {
-      const [lessonsRes, vocabRes, todayRes, goalRes] = await Promise.all([
-        supabase.from('hsk_lessons').select('*').eq('course_id', currentActive.id).order('lesson_number'),
-        supabase.from('hsk_vocabulary').select('*').eq('course_id', currentActive.id),
-        supabase.from('study_sessions').select('*').eq('user_id', user.id).eq('session_date', today).maybeSingle(),
-        supabase.from('study_goals').select('*').eq('user_id', user.id).maybeSingle(),
-      ])
-
-      setLessons(lessonsRes.data ?? [])
-      setVocabulary(vocabRes.data ?? [])
-      setTodaySession(todayRes.data)
-      setStudyGoal(goalRes.data)
-    } else {
-      setLessons([])
-      setVocabulary([])
-    }
-
-    // Calculate streak
-    const { data: sessions } = await supabase.from('study_sessions').select('session_date').eq('user_id', user.id).order('session_date', { ascending: false }).limit(60)
-    if (sessions) {
-      let s = 0
-      const dateSet = new Set((sessions as Array<{ session_date: string }>).map(x => x.session_date))
-      const d = new Date()
-      while (true) {
-        const ds = d.toISOString().split('T')[0]
-        if (dateSet.has(ds)) { s++; d.setDate(d.getDate() - 1) } else break
+    try {
+      const res = await fetchChineseStats(supabase, user.id, profile?.active_hsk_course_id)
+      setStats(res)
+      if (res.error) {
+        setErrorMsg('Không thể lấy đầy đủ thống kê từ server: ' + res.error)
       }
-      setStreak(s)
+    } catch (err: any) {
+      console.error('Failed to load Chinese stats:', err)
+      setErrorMsg('Đã xảy ra lỗi khi tải dữ liệu tiếng Trung.')
+    } finally {
+      setLoading(false)
     }
+  }, [user, profile?.active_hsk_course_id])
 
-    setLoading(false)
-  }
+  useEffect(() => {
+    if (user) {
+      loadData()
+    }
+  }, [user, loadData])
+
+  // Automatic refetch on internal navigation data change signals
+  useDataChanged('chinese', loadData)
 
   async function handleSwitchCourse(courseId: string) {
     if (!user) return
     const supabase = createClient()
-    await supabase.from('user_profiles').update({ active_hsk_course_id: courseId }).eq('user_id', user.id)
-    const selected = courses.find(c => c.id === courseId)
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ active_hsk_course_id: courseId })
+      .eq('user_id', user.id)
+
+    if (error) {
+      toast.error('Không thể chuyển khóa học: ' + error.message)
+      return
+    }
+
+    const selected = stats?.allCourses.find(c => c.id === courseId)
     if (selected) {
-      setActiveCourse(selected)
       toast.success(`Đã chuyển sang khóa học: ${selected.name}`)
+      notifyDataChanged('chinese', 'course', courseId)
       loadData()
     }
   }
 
-  const totalVocabTarget = activeCourse?.total_vocabulary || (vocabulary.length > 0 ? vocabulary.length : 1)
-  const dueVocab = vocabulary.filter(v => v.memory_level !== 'not_learned' && new Date(v.next_review_at) <= new Date())
-  const masteredVocab = vocabulary.filter(v => v.memory_level === 'mastered')
-  const completedLessons = lessons.filter(l => l.status === 'completed' || l.status === 'mastered')
-  const inProgressLesson = lessons.find(l => l.status === 'in_progress')
-
-  const courseProgress = totalVocabTarget > 0 ? Math.min(100, Math.round((vocabulary.length / totalVocabTarget) * 100)) : 0
-
-  const memoryDist = Object.entries(
-    vocabulary.reduce((acc, v) => ({ ...acc, [v.memory_level]: (acc[v.memory_level] ?? 0) + 1 }), {} as Record<string, number>)
-  ).map(([level, count]) => ({
-    name: MEMORY_LEVEL_LABELS[level as keyof typeof MEMORY_LEVEL_LABELS]?.label ?? level,
-    value: count,
-    color: MEMORY_COLORS[level as keyof typeof MEMORY_COLORS] ?? '#B8997A',
-  }))
-
-  const todayWords = todaySession?.new_words_count ?? 0
-  const todayReview = todaySession?.reviewed_words_count ?? 0
-  const todayMinutes = todaySession?.duration_minutes ?? 0
-
-  if (loading) {
+  if (loading && !stats) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 900, margin: '0 auto' }}>
-        {[1,2,3].map(i => <div key={i} className="mochi-skeleton" style={{ height: 160, borderRadius: 24 }} />)}
+        {[1, 2, 3].map(i => (
+          <div key={i} className="mochi-skeleton" style={{ height: 160, borderRadius: 24 }} />
+        ))}
       </div>
     )
   }
+
+  if (errorMsg && !stats?.activeCourse) {
+    return (
+      <div className="page">
+        <div className="mochi-card mochi-empty-state">
+          <div className="mascot">😿</div>
+          <h2>Không thể tải dữ liệu tiếng Trung</h2>
+          <p>{errorMsg}</p>
+          <button className="mochi-btn mochi-btn-primary" onClick={loadData}>
+            🔄 Thử lại
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const activeCourse = stats?.activeCourse ?? null
+  const courses = stats?.allCourses ?? []
+  const dueCount = stats?.dueVocabulary ?? 0
+  const todayMinutes = stats?.todaySession?.duration_minutes ?? 0
 
   return (
     <div className="page">
@@ -180,11 +150,18 @@ export default function ChinesePage() {
           <Link href="/chinese/vocabulary?action=add" className="mochi-btn mochi-btn-secondary mochi-btn-sm">
             + Từ vựng
           </Link>
-          <Link href="/chinese/review" className={`mochi-btn mochi-btn-primary mochi-btn-sm ${dueVocab.length > 0 ? 'pulse' : ''}`}>
-            Ôn tập {dueVocab.length > 0 ? `(${dueVocab.length})` : ''}
+          <Link href="/chinese/review" className={`mochi-btn mochi-btn-primary mochi-btn-sm ${dueCount > 0 ? 'pulse' : ''}`}>
+            Ôn tập {dueCount > 0 ? `(${dueCount})` : ''}
           </Link>
         </div>
       </div>
+
+      {errorMsg && (
+        <div className="error-banner" style={{ background: '#FFF4F0', border: '1.5px solid var(--peach-300)', padding: '12px 16px', borderRadius: 16, color: 'var(--peach-600)', fontWeight: 700, fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>⚠️ {errorMsg}</span>
+          <button className="mochi-btn mochi-btn-sm mochi-btn-secondary" onClick={loadData}>Thử lại</button>
+        </div>
+      )}
 
       {/* Empty State when no course */}
       {!activeCourse ? (
@@ -208,29 +185,33 @@ export default function ChinesePage() {
             <div className="hero-left">
               <div className="hsk-badge">{activeCourse.level}</div>
               <h2 className="hero-title">
-                {vocabulary.length}/{totalVocabTarget} từ vựng
+                {stats?.learnedVocabulary}/{stats?.targetVocabulary} từ vựng
               </h2>
-              <p className="hero-sub">{completedLessons.length}/{lessons.length} bài đã hoàn thành</p>
+              <p className="hero-sub">
+                {stats?.completedLessons}/{stats?.totalLessons} bài đã hoàn thành
+              </p>
 
               <div className="hero-streak">
                 <span className="streak-fire">🔥</span>
-                <span className="streak-count">{streak}</span>
+                <span className="streak-count">{stats?.streak ?? 0}</span>
                 <span className="streak-label">ngày liên tục</span>
               </div>
 
               <div className="mochi-progress" style={{ marginTop: 12 }}>
-                <div className="mochi-progress-bar study" style={{ width: `${courseProgress}%` }} />
+                <div className="mochi-progress-bar study" style={{ width: `${stats?.progressPercent ?? 0}%` }} />
               </div>
               <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--lavender-500)', marginTop: 4 }}>
-                {courseProgress}% hoàn thành khóa học
+                {stats?.progressPercent ?? 0}% hoàn thành khóa học
               </div>
             </div>
 
             <div className="hero-ring">
               <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ProgressRing value={vocabulary.length} max={totalVocabTarget} color="#8F71F5" size={120} />
+                <ProgressRing value={stats?.learnedVocabulary ?? 0} max={stats?.targetVocabulary ?? 1} color="#8F71F5" size={120} />
                 <div style={{ position: 'absolute', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--chocolate-600)' }}>{courseProgress}%</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--chocolate-600)' }}>
+                    {stats?.progressPercent ?? 0}%
+                  </div>
                 </div>
               </div>
             </div>
@@ -240,24 +221,24 @@ export default function ChinesePage() {
           <div className="today-stats">
             <div className="today-stat">
               <div className="ts-emoji">📖</div>
-              <div className="ts-value">{todayWords}</div>
+              <div className="ts-value">{stats?.newTodayVocabulary ?? 0}</div>
               <div className="ts-label">từ mới hôm nay</div>
-              {studyGoal && <div className="ts-goal">Mục tiêu: {studyGoal.daily_new_words}</div>}
+              {stats?.studyGoal && <div className="ts-goal">Mục tiêu: {stats.studyGoal.daily_new_words}</div>}
             </div>
             <div className="today-stat">
               <div className="ts-emoji">🔄</div>
-              <div className="ts-value">{todayReview}</div>
+              <div className="ts-value">{stats?.reviewedVocabulary ?? 0}</div>
               <div className="ts-label">từ đã ôn</div>
             </div>
             <div className="today-stat">
               <div className="ts-emoji">⏱️</div>
               <div className="ts-value">{todayMinutes}</div>
               <div className="ts-label">phút học</div>
-              {studyGoal && <div className="ts-goal">Mục tiêu: {studyGoal.daily_minutes}p</div>}
+              {stats?.studyGoal && <div className="ts-goal">Mục tiêu: {stats.studyGoal.daily_minutes}p</div>}
             </div>
             <div className="today-stat">
               <div className="ts-emoji">🌟</div>
-              <div className="ts-value">{masteredVocab.length}</div>
+              <div className="ts-value">{stats?.masteredVocabulary ?? 0}</div>
               <div className="ts-label">từ thành thạo</div>
             </div>
           </div>
@@ -268,14 +249,14 @@ export default function ChinesePage() {
               <span className="ql-emoji">📚</span>
               <div>
                 <div className="ql-title">Bài học</div>
-                <div className="ql-sub">{lessons.length} bài học</div>
+                <div className="ql-sub">{stats?.totalLessons ?? 0} bài học</div>
               </div>
             </Link>
             <Link href="/chinese/vocabulary" className="quick-link-card">
               <span className="ql-emoji">🔤</span>
               <div>
                 <div className="ql-title">Từ vựng</div>
-                <div className="ql-sub">{vocabulary.length} từ</div>
+                <div className="ql-sub">{stats?.totalVocabulary ?? 0} từ</div>
               </div>
             </Link>
             <Link href="/chinese/grammar" className="quick-link-card">

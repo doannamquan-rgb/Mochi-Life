@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { notifyDataChanged } from '@/lib/events'
 import { toast } from 'sonner'
 import { formatDate, todayString } from '@/lib/date-utils'
 import { getExerciseLabel, getExerciseIcon, EXERCISE_TYPES, INTENSITY_LABELS, estimateCalories } from '@/lib/format'
@@ -135,6 +137,7 @@ function ExerciseForm({ onClose, onSaved, existing }: {
     }
 
     toast.success(existing ? 'Cập nhật buổi tập thành công!' : `Đã thêm buổi tập thành công! 🎉 ${getExerciseIcon(type)}`)
+    notifyDataChanged('fitness', 'exercise')
     onSaved()
     onClose()
   }
@@ -394,6 +397,8 @@ function ExercisePageContent() {
 
   useEffect(() => { if (user) loadData() }, [user, period])
 
+  useDataChanged('fitness', loadData)
+
   async function loadData() {
     if (!user) return
     setLoading(true)
@@ -402,7 +407,7 @@ function ExercisePageContent() {
     const from = new Date(); from.setDate(from.getDate() - days)
     const [logsRes, goalRes] = await Promise.all([
       supabase.from('exercise_logs').select('*').eq('user_id', user.id).gte('log_date', from.toISOString().split('T')[0]).order('log_date', { ascending: false }),
-      supabase.from('fitness_goals').select('*').eq('user_id', user.id).single(),
+      supabase.from('fitness_goals').select('*').eq('user_id', user.id).maybeSingle(),
     ])
     setLogs(logsRes.data ?? [])
     setFitnessGoal(goalRes.data)
@@ -418,6 +423,7 @@ function ExercisePageContent() {
       return
     }
     toast.success('Đã xóa buổi tập')
+    notifyDataChanged('fitness', 'exercise')
     loadData()
   }
 

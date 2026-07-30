@@ -510,18 +510,101 @@ export default function SettingsPage() {
 
       {activeTab === 'about' && (
         <div className="settings-section">
-          <div className="mochi-card about-card" style={{ padding: 32 }}>
-            <span style={{ fontSize: '4rem' }}>🐱</span>
-            <h2 className="about-title">Mochi Life</h2>
-            <p className="about-version">Phiên bản 3.0.0</p>
-            <p className="about-desc">Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi giảm cân, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.</p>
-            <div className="about-features">
-              <div className="feature-item">💪 Giảm cân & Luyện tập</div>
-              <div className="feature-item">🈶 Học tiếng Trung nhiều khóa học</div>
-              <div className="feature-item">💰 Kiểm soát Chi tiêu & Giao dịch định kỳ</div>
-              <div className="feature-item">📅 Lịch tổng hợp & Thành tích</div>
+          {/* App Info Card */}
+          <div className="mochi-card about-card" style={{ padding: 28, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <span className="animate-float" style={{ fontSize: '3.5rem' }}>🐱</span>
+            <h2 className="about-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--chocolate-600)', margin: 0 }}>Mochi Life</h2>
+            <div style={{ background: 'var(--lavender-100)', color: 'var(--lavender-600)', padding: '4px 14px', borderRadius: 999, fontWeight: 800, fontSize: '0.85rem' }}>
+              Phiên bản 3.3.0
             </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--chocolate-300)', fontWeight: 600, marginTop: 8 }}>Made with 🐱 and love</p>
+            <p className="about-desc" style={{ fontSize: '0.9rem', color: 'var(--chocolate-400)', fontWeight: 600, maxWidth: 500, margin: 0 }}>
+              Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi giảm cân, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.
+            </p>
+            <div className="about-features" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, width: '100%', marginTop: 8 }}>
+              <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>💪 Giảm cân & Luyện tập</div>
+              <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>🈶 Học tiếng Trung nhiều khóa</div>
+              <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>💰 Kiểm soát Chi tiêu định kỳ</div>
+              <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>📅 Lịch tổng hợp & Thành tích</div>
+            </div>
+          </div>
+
+          {/* Author & Contact Card */}
+          <div className="mochi-card author-card" style={{ padding: 28, background: 'linear-gradient(135deg, #FFFDF9, #F5F2FF)', border: '1.5px solid var(--lavender-200)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #8F71F5, #FF7A5C)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: 'white', boxShadow: 'var(--shadow-sm)' }}>
+                👨‍💻
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--chocolate-600)' }}>Tác giả & Phát triển</h3>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--lavender-500)', marginTop: 2 }}>Đoàn Nam Quân</div>
+                <span style={{ fontSize: '0.78rem', color: 'var(--chocolate-400)', fontWeight: 600 }}>Senior Full-stack Engineer · Creator of Mochi Life</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <a
+                href="https://www.facebook.com/doannamquan/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="contact-btn fb-btn"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 18px',
+                  borderRadius: 16,
+                  background: '#1877F2',
+                  color: 'white',
+                  textDecoration: 'none',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  boxShadow: '0 4px 12px rgba(24, 119, 242, 0.25)',
+                  transition: 'transform 0.15s ease',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '1.3rem' }}>📘</span>
+                  <span>Facebook Tác Giả</span>
+                </div>
+                <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>@doannamquan ↗</span>
+              </a>
+
+              <div
+                className="contact-btn mail-btn"
+                onClick={() => {
+                  navigator.clipboard.writeText('doannamquan@gmail.com')
+                  toast.success('📋 Đã sao chép email doannamquan@gmail.com vào khay nhớ tạm!')
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 18px',
+                  borderRadius: 16,
+                  background: 'white',
+                  border: '1.5px solid var(--chocolate-200)',
+                  color: 'var(--chocolate-600)',
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  boxShadow: 'var(--shadow-xs)',
+                  transition: 'transform 0.15s ease',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '1.3rem' }}>✉️</span>
+                  <div>
+                    <div>Email Liên hệ</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--chocolate-400)', fontWeight: 600 }}>doannamquan@gmail.com</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--lavender-500)', background: 'var(--lavender-50)', padding: '4px 10px', borderRadius: 999 }}>Sao chép 📋</span>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--chocolate-300)', fontWeight: 600, marginTop: 20 }}>
+              Made with 🐱 and ❤️ by Đoàn Nam Quân
+            </div>
           </div>
         </div>
       )}
