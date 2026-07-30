@@ -121,7 +121,7 @@ export default function ChinesePage() {
   }
 
   const totalVocabTarget = activeCourse?.total_vocabulary || (vocabulary.length > 0 ? vocabulary.length : 1)
-  const dueVocab = vocabulary.filter(v => new Date(v.next_review_at) <= new Date())
+  const dueVocab = vocabulary.filter(v => v.memory_level !== 'not_learned' && new Date(v.next_review_at) <= new Date())
   const masteredVocab = vocabulary.filter(v => v.memory_level === 'mastered')
   const completedLessons = lessons.filter(l => l.status === 'completed' || l.status === 'mastered')
   const inProgressLesson = lessons.find(l => l.status === 'in_progress')

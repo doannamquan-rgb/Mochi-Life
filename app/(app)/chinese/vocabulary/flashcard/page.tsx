@@ -28,7 +28,7 @@ export default function FlashcardPage() {
     setLoading(true)
     const supabase = createClient()
     let query = supabase.from('hsk_vocabulary').select('*').eq('user_id', user.id)
-    if (mode === 'due') query = query.lte('next_review_at', new Date().toISOString())
+    if (mode === 'due') query = query.neq('memory_level', 'not_learned').lte('next_review_at', new Date().toISOString())
     else if (mode === 'hard') query = query.in('memory_level', ['not_learned', 'hard'])
     const { data } = await query.order('next_review_at')
     // Shuffle

@@ -70,7 +70,9 @@ export async function seedSampleDataForUser(
     { hanzi: '谢谢', pinyin: 'xièxie', meaning: 'cảm ơn', word_type: 'verb', memory_level: 'learned', lesson_id: lesson1Id },
     { hanzi: '再见', pinyin: 'zàijiàn', meaning: 'tạm biệt', word_type: 'verb', memory_level: 'learning', lesson_id: lesson1Id },
     { hanzi: '苹果', pinyin: 'píngguǒ', meaning: 'quả táo', word_type: 'noun', memory_level: 'hard', lesson_id: insertedLessons[1]?.id },
-    { Hanzi: '学习', pinyin: 'xuéxí', meaning: 'học tập', word_type: 'verb', memory_level: 'learned', lesson_id: insertedLessons[1]?.id },
+    { hanzi: '学习', pinyin: 'xuéxí', meaning: 'học tập', word_type: 'verb', memory_level: 'learned', lesson_id: insertedLessons[1]?.id },
+    { hanzi: '高兴', pinyin: 'gāoxìng', meaning: 'vui vẻ', word_type: 'adjective', memory_level: 'not_learned', lesson_id: lesson1Id },
+    { hanzi: '看', pinyin: 'kàn', meaning: 'nhìn, xem', word_type: 'verb', memory_level: 'not_learned', lesson_id: insertedLessons[1]?.id },
   ]
 
   for (const v of sampleVocab) {
@@ -78,7 +80,7 @@ export async function seedSampleDataForUser(
       user_id: userId,
       course_id: course.id,
       lesson_id: v.lesson_id,
-      hanzi: v.hanzi || v.Hanzi,
+      hanzi: v.hanzi,
       pinyin: v.pinyin,
       meaning: v.meaning,
       word_type: v.word_type,

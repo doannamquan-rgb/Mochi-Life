@@ -306,19 +306,414 @@
   margin-top: 8px;
 }
 
-@media (max-width: 640px) {
-  .type-cards-grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
+.inline-form-card {
+  scroll-margin-top: 90px;
+}
+
+@media (max-width: 768px) {
+  .inline-form-card {
+    padding-bottom: calc(var(--bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
   }
 }
 
+.mochi-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+
+.mochi-legend {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--chocolate-500);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-section-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--chocolate-600);
+  margin: 14px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1.5px dashed var(--chocolate-100);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Exercise Type Cards */
+.exercise-type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.exercise-type-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 2px solid var(--chocolate-100);
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  user-select: none;
+}
+
+.exercise-type-card:hover {
+  border-color: var(--chocolate-200);
+  box-shadow: var(--shadow-xs);
+}
+
+.exercise-type-card:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 122, 92, 0.35);
+  border-color: var(--peach-400);
+}
+
+.exercise-type-card.selected {
+  border-color: var(--peach-400) !important;
+  background: var(--peach-50) !important;
+  color: var(--peach-500) !important;
+}
+
+.etc-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.etc-label {
+  font-weight: 800;
+  font-size: 0.85rem;
+  flex: 1;
+  white-space: nowrap;
+}
+
+.exercise-type-card .tc-check {
+  width: 20px;
+  height: 20px;
+  font-size: 0.75rem;
+}
+
+.exercise-type-card.selected .tc-check {
+  border-color: var(--peach-400) !important;
+  background: var(--peach-400) !important;
+  color: white !important;
+}
+
+/* Intensity Cards */
+.intensity-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.intensity-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--chocolate-100);
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: var(--chocolate-500);
+  position: relative;
+  user-select: none;
+}
+
+.intensity-card:hover {
+  border-color: var(--chocolate-200);
+}
+
+.intensity-card:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 202, 26, 0.4);
+}
+
+.intensity-card.selected-light {
+  border-color: var(--mint-400) !important;
+  background: var(--mint-50) !important;
+  color: var(--mint-500) !important;
+}
+
+.intensity-card.selected-moderate {
+  border-color: var(--cheese-400) !important;
+  background: var(--cheese-50) !important;
+  color: var(--chocolate-600) !important;
+}
+
+.intensity-card.selected-high {
+  border-color: var(--peach-400) !important;
+  background: var(--peach-50) !important;
+  color: var(--peach-500) !important;
+}
+
+.intensity-card .tc-check {
+  width: 20px;
+  height: 20px;
+  font-size: 0.75rem;
+}
+
+.intensity-card.selected-light .tc-check {
+  border-color: var(--mint-400) !important;
+  background: var(--mint-400) !important;
+  color: white !important;
+}
+
+.intensity-card.selected-moderate .tc-check {
+  border-color: var(--cheese-400) !important;
+  background: var(--cheese-400) !important;
+  color: white !important;
+}
+
+.intensity-card.selected-high .tc-check {
+  border-color: var(--peach-400) !important;
+  background: var(--peach-400) !important;
+  color: white !important;
+}
+
+/* Calorie Mode Controls */
+.calorie-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.calorie-mode-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--chocolate-100);
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: var(--chocolate-500);
+  position: relative;
+  user-select: none;
+}
+
+.calorie-mode-card:hover {
+  border-color: var(--chocolate-200);
+}
+
+.calorie-mode-card:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 202, 26, 0.4);
+}
+
+.calorie-mode-card.selected {
+  border-color: var(--cheese-400) !important;
+  background: var(--cheese-100) !important;
+  color: var(--chocolate-600) !important;
+}
+
+/* Vocab Status Cards */
+.vocab-status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.vocab-status-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 2px solid var(--chocolate-100);
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  user-select: none;
+}
+
+.vocab-status-card:hover {
+  border-color: var(--chocolate-200);
+  box-shadow: var(--shadow-xs);
+}
+
+.vocab-status-card:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(143, 113, 245, 0.4);
+  border-color: var(--lavender-400);
+}
+
+.vocab-status-card.selected-not-learned {
+  border-color: var(--chocolate-300) !important;
+  background: var(--chocolate-50) !important;
+}
+
+.vocab-status-card.selected-learned {
+  border-color: var(--mint-400) !important;
+  background: var(--mint-50) !important;
+}
+
+.vocab-status-card .vsc-icon {
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.vocab-status-card .vsc-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.vocab-status-card .vsc-title {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--chocolate-600);
+}
+
+.vocab-status-card .vsc-desc {
+  font-size: 0.73rem;
+  color: var(--chocolate-400);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.vocab-status-card .tc-check {
+  width: 20px;
+  height: 20px;
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.vocab-status-card.selected-not-learned .tc-check {
+  border-color: var(--chocolate-300) !important;
+  background: var(--chocolate-300) !important;
+  color: white !important;
+}
+
+.vocab-status-card.selected-learned .tc-check {
+  border-color: var(--mint-400) !important;
+  background: var(--mint-400) !important;
+  color: white !important;
+}
+
+/* Quick Learned Control in Row */
+.vocab-quick-learned-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--chocolate-200);
+  background: white;
+  color: var(--chocolate-500);
+  font-weight: 800;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  font-family: 'Nunito', sans-serif;
+  white-space: nowrap;
+}
+
+.vocab-quick-learned-btn:hover {
+  border-color: var(--mint-400);
+  color: var(--mint-500);
+  background: var(--mint-50);
+}
+
+.vocab-quick-learned-btn.is-learned {
+  border-color: var(--mint-400);
+  background: var(--mint-400);
+  color: white;
+}
+
+.vocab-quick-learned-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dark Mode Overrides */
 [data-theme="dark"] .mochi-input,
 [data-theme="dark"] select.mochi-input,
 [data-theme="dark"] option {
   background-color: #332B25 !important;
   color: #FFF5EC !important;
   border-color: #4A3E36 !important;
+}
+
+[data-theme="dark"] .exercise-type-card,
+[data-theme="dark"] .intensity-card,
+[data-theme="dark"] .calorie-mode-card,
+[data-theme="dark"] .vocab-status-card {
+  background-color: #332B25 !important;
+  border-color: #4A3E36 !important;
+  color: #FFF5EC !important;
+}
+
+[data-theme="dark"] .exercise-type-card.selected {
+  background-color: rgba(255, 122, 92, 0.25) !important;
+  border-color: var(--peach-400) !important;
+  color: #FFF5EC !important;
+}
+
+[data-theme="dark"] .intensity-card.selected-light {
+  background-color: rgba(59, 184, 142, 0.25) !important;
+  border-color: var(--mint-400) !important;
+  color: #FFF5EC !important;
+}
+
+[data-theme="dark"] .intensity-card.selected-moderate {
+  background-color: rgba(255, 202, 26, 0.25) !important;
+  border-color: var(--cheese-400) !important;
+  color: #FFF5EC !important;
+}
+
+[data-theme="dark"] .intensity-card.selected-high {
+  background-color: rgba(255, 122, 92, 0.25) !important;
+  border-color: var(--peach-400) !important;
+  color: #FFF5EC !important;
+}
+
+[data-theme="dark"] .calorie-mode-card.selected {
+  background-color: rgba(255, 202, 26, 0.25) !important;
+  border-color: var(--cheese-400) !important;
+  color: #FFF5EC !important;
+}
+
+[data-theme="dark"] .vocab-status-card.selected-learned {
+  background-color: rgba(59, 184, 142, 0.25) !important;
+  border-color: var(--mint-400) !important;
+  color: #FFF5EC !important;
+}
+
+[data-theme="dark"] .vocab-status-card.selected-not-learned {
+  background-color: rgba(140, 123, 110, 0.25) !important;
+  border-color: var(--chocolate-300) !important;
+  color: #FFF5EC !important;
+}
+
+[data-theme="dark"] .vocab-quick-learned-btn {
+  background-color: #332B25;
+  border-color: #4A3E36;
+  color: #D9C8BA;
+}
+
+[data-theme="dark"] .form-section-title {
+  color: #FFF5EC;
+  border-bottom-color: #4A3E36;
 }
 
 [data-theme="dark"] .period-btn {
@@ -758,7 +1153,7 @@ body {
 
 .mochi-fab {
   position: fixed;
-  bottom: 80px;
+  bottom: calc(var(--bottom-nav-height, 80px) + env(safe-area-inset-bottom, 0px) + 16px);
   right: 20px;
   width: 56px;
   height: 56px;
@@ -772,7 +1167,7 @@ body {
   cursor: pointer;
   border: none;
   font-size: 1.5rem;
-  z-index: 40;
+  z-index: 90;
   transition: all var(--transition-fast);
 }
 

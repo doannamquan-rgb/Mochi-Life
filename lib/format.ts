@@ -104,9 +104,14 @@ export function getExerciseIcon(type: string): string {
 }
 
 // Estimate calories burned
-export function estimateCalories(exerciseType: string, durationMinutes: number): number {
+export function estimateCalories(
+  exerciseType: string,
+  durationMinutes: number,
+  intensity: 'light' | 'moderate' | 'high' = 'moderate'
+): number {
   const calPerMin = EXERCISE_TYPES[exerciseType]?.estimateCal ?? 5
-  return Math.round(calPerMin * durationMinutes)
+  const multiplier = intensity === 'light' ? 0.8 : intensity === 'high' ? 1.25 : 1.0
+  return Math.round(calPerMin * durationMinutes * multiplier)
 }
 
 // Intensity labels

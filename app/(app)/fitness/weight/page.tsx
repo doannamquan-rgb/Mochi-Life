@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
@@ -23,12 +23,51 @@ function WeightForm({ onClose, onSaved, existing }: {
   const [hip, setHip] = useState(existing?.hip_cm?.toString() ?? '')
   const [note, setNote] = useState(existing?.note ?? '')
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<{ date?: string; weight?: string; waist?: string; hip?: string }>({})
+
+  const formRef = useRef<HTMLDivElement>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
+  const hasScrolledRef = useRef(false)
+
+  useEffect(() => {
+    if (!hasScrolledRef.current && formRef.current) {
+      hasScrolledRef.current = true
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      requestAnimationFrame(() => {
+        formRef.current?.scrollIntoView({
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          block: 'start',
+        })
+        dateInputRef.current?.focus({ preventScroll: true })
+      })
+    }
+  }, [])
+
+  function validate(): boolean {
+    const errs: typeof errors = {}
+    if (!date) errs.date = 'Vui lòng chọn ngày'
+    if (!weight || isNaN(Number(weight)) || Number(weight) < 20 || Number(weight) > 300) {
+      errs.weight = 'Cân nặng phải là số hợp lệ từ 20 đến 300 kg'
+    }
+    if (waist && (isNaN(Number(waist)) || Number(waist) < 30 || Number(waist) > 200)) {
+      errs.waist = 'Vòng eo hợp lệ từ 30 đến 200 cm'
+    }
+    if (hip && (isNaN(Number(hip)) || Number(hip) < 50 || Number(hip) > 200)) {
+      errs.hip = 'Vòng hông hợp lệ từ 50 đến 200 cm'
+    }
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!weight || isNaN(Number(weight))) { toast.error('Vui lòng nhập cân nặng hợp lệ'); return }
+    if (!validate()) {
+      toast.error('Vui lòng kiểm tra các giá trị đã nhập')
+      return
+    }
     if (!user) return
     setLoading(true)
+
     const supabase = createClient()
     const payload = {
       user_id: user.id,
@@ -38,58 +77,135 @@ function WeightForm({ onClose, onSaved, existing }: {
       hip_cm: hip ? Number(hip) : null,
       note: note || null,
     }
+
     const { error } = existing
       ? await supabase.from('weight_logs').update(payload).eq('id', existing.id)
       : await supabase.from('weight_logs').upsert(payload, { onConflict: 'user_id,log_date' })
 
-    if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
+    if (error) {
+      toast.error('Không thể lưu cân nặng: ' + error.message)
+      setLoading(false)
+      return
+    }
 
     // Update current_weight in weight_goals
     await supabase.from('weight_goals').update({ current_weight: Number(weight) }).eq('user_id', user.id)
 
-    toast.success(existing ? 'Đã cập nhật!' : 'Đã lưu cân nặng! 🎉')
+    toast.success(existing ? 'Cập nhật bản ghi cân nặng thành công!' : 'Đã ghi lại cân nặng thành công! 🎉')
     onSaved()
     onClose()
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
+    <div ref={formRef} className="inline-form-card">
+      <div className="inline-form-inner">
+        <div className="inline-form-header">
           <h2>{existing ? 'Sửa bản ghi' : 'Ghi cân nặng'} ⚖️</h2>
-          <button onClick={onClose} className="modal-close">✕</button>
+          <button type="button" onClick={onClose} className="inline-close-btn" title="Hủy">✕</button>
         </div>
-        <form onSubmit={handleSubmit} className="modal-form">
+
+        <form onSubmit={handleSubmit} className="inline-form-body">
           <div className="form-row">
             <div className="form-group">
-              <label className="mochi-label">Ngày *</label>
-              <input type="date" className="mochi-input" value={date} onChange={e => setDate(e.target.value)} required />
+              <label className="mochi-label">Ngày ghi *</label>
+              <input
+                ref={dateInputRef}
+                type="date"
+                className="mochi-input"
+                value={date}
+                onChange={e => {
+                  setDate(e.target.value)
+                  if (errors.date) setErrors(prev => ({ ...prev, date: undefined }))
+                }}
+                required
+              />
+              {errors.date && <span className="field-error-msg">{errors.date}</span>}
             </div>
+
             <div className="form-group">
               <label className="mochi-label">Cân nặng (kg) *</label>
-              <input type="number" className="mochi-input" placeholder="60.5" value={weight} onChange={e => setWeight(e.target.value)} step="0.1" min="20" max="300" required />
+              <input
+                type="number"
+                className="mochi-input"
+                placeholder="60.5"
+                value={weight}
+                onChange={e => {
+                  setWeight(e.target.value)
+                  if (errors.weight) setErrors(prev => ({ ...prev, weight: undefined }))
+                }}
+                step="0.1"
+                min="20"
+                max="300"
+                required
+              />
+              {errors.weight && <span className="field-error-msg">{errors.weight}</span>}
             </div>
           </div>
+
           <div className="form-row">
             <div className="form-group">
               <label className="mochi-label">Vòng eo (cm)</label>
-              <input type="number" className="mochi-input" placeholder="70" value={waist} onChange={e => setWaist(e.target.value)} step="0.5" min="30" max="200" />
+              <input
+                type="number"
+                className="mochi-input"
+                placeholder="70"
+                value={waist}
+                onChange={e => {
+                  setWaist(e.target.value)
+                  if (errors.waist) setErrors(prev => ({ ...prev, waist: undefined }))
+                }}
+                step="0.5"
+                min="30"
+                max="200"
+              />
+              {errors.waist && <span className="field-error-msg">{errors.waist}</span>}
             </div>
+
             <div className="form-group">
               <label className="mochi-label">Vòng hông (cm)</label>
-              <input type="number" className="mochi-input" placeholder="90" value={hip} onChange={e => setHip(e.target.value)} step="0.5" min="50" max="200" />
+              <input
+                type="number"
+                className="mochi-input"
+                placeholder="90"
+                value={hip}
+                onChange={e => {
+                  setHip(e.target.value)
+                  if (errors.hip) setErrors(prev => ({ ...prev, hip: undefined }))
+                }}
+                step="0.5"
+                min="50"
+                max="200"
+              />
+              {errors.hip && <span className="field-error-msg">{errors.hip}</span>}
             </div>
           </div>
+
           <div className="form-group">
             <label className="mochi-label">Ghi chú</label>
-            <textarea className="mochi-input" placeholder="Cảm giác hôm nay..." value={note} onChange={e => setNote(e.target.value)} rows={2} style={{ resize: 'vertical' }} />
+            <textarea
+              className="mochi-input"
+              placeholder="Cảm giác hôm nay, chế độ ăn..."
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              rows={2}
+              style={{ resize: 'vertical' }}
+            />
           </div>
-          <div className="modal-footer">
-            <button type="button" className="mochi-btn mochi-btn-secondary" onClick={onClose}>Hủy</button>
-            <button type="submit" className="mochi-btn mochi-btn-primary" disabled={loading}>{loading ? 'Đang lưu...' : 'Lưu lại'}</button>
+
+          <div className="inline-form-footer">
+            <button type="button" className="mochi-btn mochi-btn-secondary" onClick={onClose} disabled={loading}>
+              Hủy
+            </button>
+            <button type="submit" className="mochi-btn mochi-btn-primary" disabled={loading}>
+              {loading ? 'Đang lưu...' : existing ? 'Cập nhật bản ghi' : 'Lưu bản ghi'}
+            </button>
           </div>
         </form>
       </div>
+
+      <style jsx>{`
+        .field-error-msg { font-size: 0.75rem; color: var(--peach-500); font-weight: 700; margin-top: 2px; }
+      `}</style>
     </div>
   )
 }
@@ -123,11 +239,11 @@ function WeightPageContent() {
   }
 
   async function deleteLog(id: string) {
-    if (!confirm('Xóa bản ghi này?')) return
+    if (!confirm('Bạn có chắc chắn muốn xóa bản ghi cân nặng này?')) return
     const supabase = createClient()
     const { error } = await supabase.from('weight_logs').delete().eq('id', id)
-    if (error) { toast.error('Lỗi khi xóa'); return }
-    toast.success('Đã xóa')
+    if (error) { toast.error('Không thể xóa bản ghi'); return }
+    toast.success('Đã xóa bản ghi')
     loadData()
   }
 
@@ -151,6 +267,8 @@ function WeightPageContent() {
   const minW = logs.length ? Math.min(...logs.map(l => l.weight)) : null
   const maxW = logs.length ? Math.max(...logs.map(l => l.weight)) : null
 
+  const isFormOpen = showForm || !!editingLog
+
   return (
     <div className="page">
       <div className="page-header">
@@ -160,7 +278,9 @@ function WeightPageContent() {
         </div>
         <div className="header-actions">
           <button onClick={exportCSV} className="mochi-btn mochi-btn-secondary mochi-btn-sm">📥 Xuất CSV</button>
-          <button onClick={() => { setEditingLog(undefined); setShowForm(true) }} className="mochi-btn mochi-btn-primary mochi-btn-sm">+ Ghi cân</button>
+          {!isFormOpen && (
+            <button onClick={() => { setEditingLog(undefined); setShowForm(true) }} className="mochi-btn mochi-btn-primary mochi-btn-sm">+ Ghi cân</button>
+          )}
         </div>
       </div>
 
@@ -214,41 +334,46 @@ function WeightPageContent() {
         </div>
       )}
 
-      {/* Logs table */}
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[1,2,3,4,5].map(i => <div key={i} className="mochi-skeleton" style={{ height: 56, borderRadius: 16 }} />)}
-        </div>
-      ) : logs.length === 0 ? (
-        <div className="mochi-empty-state">
-          <div className="mascot">😿</div>
-          <h3>Chưa có dữ liệu cân nặng</h3>
-          <p>Hãy ghi lại cân nặng đầu tiên nhé!</p>
-          <button className="mochi-btn mochi-btn-primary" onClick={() => setShowForm(true)}>⚖️ Ghi ngay</button>
-        </div>
-      ) : (
-        <div className="logs-list">
-          {[...logs].reverse().map(log => (
-            <div key={log.id} className="log-item">
-              <div className="log-date">{formatDate(log.log_date)}</div>
-              <div className="log-weight">{log.weight} kg</div>
-              {log.waist_cm && <div className="log-extra">Eo: {log.waist_cm} cm</div>}
-              {log.note && <div className="log-note">📝 {log.note}</div>}
-              <div className="log-actions">
-                <button className="mochi-btn mochi-btn-ghost mochi-btn-sm" onClick={() => { setEditingLog(log); setShowForm(true) }}>✏️</button>
-                <button className="mochi-btn mochi-btn-ghost mochi-btn-sm" onClick={() => deleteLog(log.id)}>🗑️</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showForm && (
+      {/* Inline Form when Open */}
+      {isFormOpen && (
         <WeightForm
           onClose={() => { setShowForm(false); setEditingLog(undefined) }}
           onSaved={loadData}
           existing={editingLog}
         />
+      )}
+
+      {/* Logs Table & Empty State (ONLY when form is CLOSED) */}
+      {!isFormOpen && (
+        <>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1, 2, 3, 4, 5].map(i => <div key={i} className="mochi-skeleton" style={{ height: 56, borderRadius: 16 }} />)}
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="mochi-empty-state">
+              <div className="mascot">😿</div>
+              <h3>Chưa có dữ liệu cân nặng</h3>
+              <p>Hãy ghi lại cân nặng đầu tiên nhé!</p>
+              <button className="mochi-btn mochi-btn-primary" onClick={() => setShowForm(true)}>⚖️ Ghi ngay</button>
+            </div>
+          ) : (
+            <div className="logs-list">
+              {[...logs].reverse().map(log => (
+                <div key={log.id} className="log-item">
+                  <div className="log-date">{formatDate(log.log_date)}</div>
+                  <div className="log-weight">{log.weight} kg</div>
+                  {log.waist_cm && <div className="log-extra">Eo: {log.waist_cm} cm</div>}
+                  {log.note && <div className="log-note">📝 {log.note}</div>}
+                  <div className="log-actions">
+                    <button className="mochi-btn mochi-btn-ghost mochi-btn-sm" onClick={() => { setEditingLog(log); setShowForm(true) }}>✏️</button>
+                    <button className="mochi-btn mochi-btn-ghost mochi-btn-sm" onClick={() => deleteLog(log.id)}>🗑️</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <style jsx>{`
@@ -259,31 +384,26 @@ function WeightPageContent() {
         .header-actions { display: flex; gap: 8px; }
         .period-filter { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
         .period-btn { padding: 5px 12px; border-radius: 999px; border: 1.5px solid var(--chocolate-200); background: white; color: var(--chocolate-500); font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; font-family: 'Nunito', sans-serif; }
-        .period-btn.active { background: var(--peach-300); border-color: var(--peach-300); color: white; }
-        .summary-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-        .summary-item { flex: 1; min-width: 100px; background: white; border-radius: 16px; padding: 14px; box-shadow: var(--shadow-sm); border: 1.5px solid var(--chocolate-100); text-align: center; }
-        .summary-label { font-size: 0.72rem; font-weight: 700; color: var(--chocolate-400); margin-bottom: 4px; }
+        .period-btn.active { background: var(--peach-400); border-color: var(--peach-400); color: white; }
+        .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+        .summary-item { background: white; border-radius: 16px; padding: 12px 14px; border: 1.5px solid var(--chocolate-100); text-align: center; box-shadow: var(--shadow-xs); }
+        .summary-label { font-size: 0.72rem; font-weight: 700; color: var(--chocolate-400); margin-bottom: 2px; }
         .summary-value { font-size: 1.1rem; font-weight: 800; color: var(--chocolate-600); }
-        .summary-change { font-size: 0.75rem; font-weight: 700; margin-top: 2px; }
+        .summary-change { font-size: 0.72rem; font-weight: 800; margin-top: 2px; }
         .summary-change.good { color: var(--mint-400); }
         .summary-change.warn { color: var(--peach-400); }
         .card-title { font-size: 0.95rem; font-weight: 800; color: var(--chocolate-600); margin: 0 0 16px; }
         .logs-list { display: flex; flex-direction: column; gap: 8px; }
-        .log-item { background: white; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-xs); border: 1.5px solid var(--chocolate-100); flex-wrap: wrap; }
-        .log-date { font-size: 0.85rem; font-weight: 700; color: var(--chocolate-400); min-width: 80px; }
-        .log-weight { font-size: 1rem; font-weight: 800; color: var(--chocolate-600); min-width: 70px; }
-        .log-extra { font-size: 0.78rem; font-weight: 600; color: var(--chocolate-400); flex: 1; }
-        .log-note { font-size: 0.78rem; color: var(--chocolate-400); font-weight: 600; flex: 1; }
-        .log-actions { display: flex; gap: 4px; margin-left: auto; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(61,43,31,0.3); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); padding: 16px; }
-        .modal { background: white; border-radius: 24px; padding: 28px; width: 100%; max-width: 480px; box-shadow: var(--shadow-xl); max-height: 90vh; overflow-y: auto; }
-        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-        .modal-header h2 { font-size: 1.2rem; font-weight: 800; color: var(--chocolate-600); margin: 0; }
-        .modal-close { background: var(--cream); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 0.85rem; color: var(--chocolate-500); }
-        .modal-form { display: flex; flex-direction: column; gap: 14px; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+        .log-item { background: white; border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-xs); border: 1.5px solid var(--chocolate-100); }
+        .log-date { font-weight: 700; font-size: 0.88rem; color: var(--chocolate-600); min-width: 90px; }
+        .log-weight { font-weight: 800; font-size: 1.05rem; color: var(--peach-400); flex: 1; }
+        .log-extra { font-size: 0.8rem; color: var(--chocolate-400); font-weight: 600; }
+        .log-note { font-size: 0.8rem; color: var(--chocolate-400); font-style: italic; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .log-actions { display: flex; gap: 2px; }
+        @media (max-width: 640px) {
+          .summary-row { grid-template-columns: repeat(2, 1fr); }
+          .log-item { flex-wrap: wrap; gap: 8px; }
+        }
       `}</style>
     </div>
   )

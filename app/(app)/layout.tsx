@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -40,6 +40,85 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [fabOpen, setFabOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+
+  // AssistiveTouch-style Draggable FAB State
+  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const fabRef = useRef<HTMLButtonElement>(null)
+
+  // Load saved position from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mochi_fab_pos')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          const clampedX = Math.max(12, Math.min(window.innerWidth - 68, parsed.x))
+          const clampedY = Math.max(12, Math.min(window.innerHeight - 68, parsed.y))
+          setFabPos({ x: clampedX, y: clampedY })
+        }
+      }
+    } catch (e) {
+      console.error('Could not load FAB position', e)
+    }
+  }, [])
+
+  function handlePointerDown(e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) {
+    if (!fabRef.current) return
+    const rect = fabRef.current.getBoundingClientRect()
+    const startX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const startY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    const initialLeft = rect.left
+    const initialTop = rect.top
+    let hasMoved = false
+
+    function onMove(evt: MouseEvent | TouchEvent) {
+      const currentX = 'touches' in evt ? evt.touches[0].clientX : evt.clientX
+      const currentY = 'touches' in evt ? evt.touches[0].clientY : evt.clientY
+      const dx = currentX - startX
+      const dy = currentY - startY
+
+      if (Math.hypot(dx, dy) > 6) {
+        hasMoved = true
+        setIsDragging(true)
+      }
+
+      if (hasMoved) {
+        const newX = Math.max(12, Math.min(window.innerWidth - 68, initialLeft + dx))
+        const newY = Math.max(12, Math.min(window.innerHeight - 68, initialTop + dy))
+        setFabPos({ x: newX, y: newY })
+      }
+    }
+
+    function onUp() {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('touchend', onUp)
+
+      if (hasMoved) {
+        setTimeout(() => setIsDragging(false), 50)
+        setFabPos(prev => {
+          if (!prev) return null
+          // Snap to nearest screen edge (left or right side like iPhone AssistiveTouch)
+          const snapLeft = prev.x < window.innerWidth / 2 ? 16 : window.innerWidth - 68
+          const snapped = { x: snapLeft, y: prev.y }
+          try {
+            localStorage.setItem('mochi_fab_pos', JSON.stringify(snapped))
+          } catch (err) {}
+          return snapped
+        })
+      } else {
+        setIsDragging(false)
+        setFabOpen(prev => !prev)
+      }
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    window.addEventListener('touchmove', onMove, { passive: false })
+    window.addEventListener('touchend', onUp)
+  }
 
   // Service Worker registration & Theme Sync
   useEffect(() => {
@@ -215,7 +294,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* FAB Menu */}
       {fabOpen && (
-        <div className="fab-menu">
+        <div
+          className="fab-menu"
+          style={fabPos ? {
+            position: 'fixed',
+            top: `${Math.max(16, Math.min((typeof window !== 'undefined' ? window.innerHeight : 600) - 270, fabPos.y - 250))}px`,
+            left: (typeof window !== 'undefined' && fabPos.x > window.innerWidth / 2)
+              ? `${Math.max(16, fabPos.x - 175)}px`
+              : `${Math.min((typeof window !== 'undefined' ? window.innerWidth : 400) - 180, fabPos.x + 10)}px`,
+            bottom: 'auto',
+            right: 'auto',
+            zIndex: 95,
+          } : { zIndex: 95 }}
+        >
           {fabActions.map((action, i) => (
             <Link
               key={action.href}
@@ -232,10 +323,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <button
-        className={`mochi-fab ${fabOpen ? 'fab-open' : ''}`}
-        onClick={() => setFabOpen(!fabOpen)}
+        ref={fabRef}
+        className={`mochi-fab ${fabOpen ? 'fab-open' : ''} ${isDragging ? 'is-dragging' : ''}`}
+        onMouseDown={handlePointerDown}
+        onTouchStart={handlePointerDown}
         aria-label="Thêm nhanh"
         id="fab-button"
+        style={fabPos ? {
+          position: 'fixed',
+          left: `${fabPos.x}px`,
+          top: `${fabPos.y}px`,
+          bottom: 'auto',
+          right: 'auto',
+          zIndex: 90,
+          touchAction: 'none',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          transition: isDragging ? 'none' : 'left 0.3s cubic-bezier(0.2,0.8,0.2,1), top 0.3s cubic-bezier(0.2,0.8,0.2,1), background 0.15s, transform 0.15s',
+        } : {
+          touchAction: 'none',
+          cursor: 'grab',
+        }}
       >
         {fabOpen ? '✕' : '+'}
       </button>
@@ -492,11 +599,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }
 
           .fab-menu {
-            bottom: 148px;
+            bottom: 164px;
           }
 
           .mochi-fab {
-            bottom: 76px;
+            bottom: 96px;
           }
         }
       `}</style>

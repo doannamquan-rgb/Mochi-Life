@@ -232,8 +232,12 @@ export default function ImportPage() {
             }
           }
 
-          // Insert new
-          await supabase.from('hsk_vocabulary').insert({
+          // Insert new (default imported state: not_learned)
+          const validLevels = ['not_learned', 'hard', 'learning', 'learned', 'mastered']
+          const rawStatus = (row as any).status || (row as any).memory_level
+          const targetLevel = validLevels.includes(rawStatus) ? rawStatus : 'not_learned'
+
+          const vocabPayload = {
             user_id: user.id,
             course_id: targetCourseId,
             hanzi: row.hanzi,
@@ -242,7 +246,17 @@ export default function ImportPage() {
             word_type: row.word_type || null,
             example_cn: row.example_cn || null,
             example_vi: row.example_vi || null,
-          })
+            memory_level: targetLevel,
+            first_learned_at: targetLevel !== 'not_learned' ? new Date().toISOString() : null,
+          }
+
+          let insRes = await supabase.from('hsk_vocabulary').insert(vocabPayload)
+          if (insRes.error && insRes.error.message.includes('course_id')) {
+            const { course_id, ...payloadWithoutCourse } = vocabPayload
+            insRes = await supabase.from('hsk_vocabulary').insert(payloadWithoutCourse)
+          }
+
+          if (insRes.error) throw insRes.error
           importedCount++
         } catch {
           failedCount++

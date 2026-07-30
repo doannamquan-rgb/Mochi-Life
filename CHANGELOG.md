@@ -4,6 +4,31 @@ Tất cả các thay đổi và tính năng mới của dự án **Mochi Life** 
 
 ---
 
+## 🚀 [v3.1.0] - 2026-07-31
+
+### 🌟 Nâng cấp UX/UI Thêm/Sửa & Nút AssistiveTouch Kéo Thả (Add/Edit Focused UX & Draggable FAB)
+
+#### 1. 🏃 Nâng cấp Form Thêm/Sửa Nhật ký Luyện tập (Fitness Exercise UX Upgrade)
+- **Chế độ nhập liệu tập trung (Focused Entry Mode)**: Chuyển đổi form từ dạng modal popup sang dạng thẻ inline mượt mà. Ẩn hoàn bộ danh sách lịch sử & empty-state khi đang mở form.
+- **Thẻ chọn Loại bài tập & Cường độ (Radio Cards)**: Thay thế danh sách nút văn bản đơn điệu bằng các thẻ radio chuẩn accessibility (`<fieldset>`) có icon, tiêu đề, đường viền nổi bật, background màu ngữ nghĩa và dấu tích `✓` trực quan.
+- **Ước tính Calo thông minh (2 Chế độ)**: Tích hợp chế độ `✨ Ước tính tự động` (tính theo thời gian, loại bài tập và cường độ Nhẹ/Vừa/Cao) và chế độ `✍️ Tự nhập`.
+- **Hiển thị trường linh hoạt**: Tự động hiển thị/ẩn trường quãng đường (km) và số bước tùy thuộc vào loại bài tập (Đi bộ, Chạy bộ, Đạp xe, Bơi, Gym...).
+
+#### 2. 🔤 Nâng cấp Form Thêm/Sửa Từ vựng & Quản lý Trạng thái Học (Chinese Vocab UX Upgrade)
+- **Thẻ chọn Trạng thái học (`Chưa học` / `Đã học`)**: Phân định rõ ràng từ vựng `Chưa học` (chỉ lưu danh sách) và `Đã học` (đưa vào lịch ôn tập SRS).
+- **Hành động nhanh `○ Chưa học` / `✓ Đã học` trên mỗi dòng**: Cho phép đánh dấu một từ là đã học ngay trên danh sách với hiệu ứng Toast dynamically.
+- **Phân nhóm thông tin rõ ràng**: Chia form từ vựng thành 4 mục dễ đọc (📌 Thông tin chính, 🎯 Trạng thái học, 💬 Câu ví dụ, 📝 Ghi chú).
+- **Chuẩn hóa đếm Cần ôn & Báo cáo**: Loại bỏ việc đếm nhầm các từ mới thêm (`not_learned`) vào danh sách cần ôn hôm nay.
+- **Bảo toàn lịch sử SRS**: Việc chỉnh sửa Hán tự, Pinyin, Nghĩa hay Bài học tuyệt đối không làm mất số lần đếm đúng/sai hay khoảng cách ôn tập.
+
+#### 3. 🎯 Nút Floating Action Button Kéo Thả Kiểu AssistiveTouch (Draggable FAB)
+- **Hỗ trợ Kéo thả (Drag & Drop)**: Nút màu vàng `+` hỗ trợ kéo thả tự do bằng chuột & cảm ứng trên màn hình.
+- **Hít lề mượt mà (iPhone-style Edge Snapping)**: Tự động hít về lề trái/phải gần nhất khi thả tay.
+- **Ghi nhớ vị trí (`localStorage`)**: Lưu trữ vị trí yêu thích của người dùng qua các phiên làm việc.
+- **Menu nổ vị trí thông minh**: Menu thêm nhanh tự động hiển thị bên cạnh nút vàng ở bất kỳ vị trí nào trên màn hình.
+
+---
+
 ## 🚀 [v3.0.0] - 2026-07-30
 
 ### 🌟 Cải tiến lớn & Nâng cấp UX/UI (Major UX/UI & Logic Overhaul)

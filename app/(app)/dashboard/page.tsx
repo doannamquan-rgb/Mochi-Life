@@ -118,7 +118,7 @@ export default function DashboardPage() {
 
     if (vocab.data) {
       setTotalVocab(vocab.data.length)
-      const due = vocab.data.filter((v: any) => new Date(v.next_review_at) <= new Date()).length
+      const due = vocab.data.filter((v: any) => v.memory_level !== 'not_learned' && new Date(v.next_review_at) <= new Date()).length
       setDueVocab(due)
     }
 

@@ -36,6 +36,7 @@ export default function ReviewPage() {
       .from('hsk_vocabulary')
       .select('*')
       .eq('user_id', user.id)
+      .neq('memory_level', 'not_learned')
       .lte('next_review_at', new Date().toISOString())
       .order('next_review_at')
     const shuffled = (data ?? []).sort(() => Math.random() - 0.5)
