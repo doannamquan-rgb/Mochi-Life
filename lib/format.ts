@@ -6,20 +6,27 @@ export function formatVND(amount: number): string {
     style: 'currency',
     currency: 'VND',
     maximumFractionDigits: 0,
-  }).format(amount)
+  }).format(Math.abs(amount))
+}
+
+// Format VND with explicit transaction type sign (+ or -)
+export function formatTransactionAmount(amount: number, type: 'expense' | 'income'): string {
+  const formatted = formatVND(amount)
+  return type === 'income' ? `+${formatted}` : `-${formatted}`
 }
 
 // Format VND without symbol
 export function formatVNDNumber(amount: number): string {
-  return new Intl.NumberFormat('vi-VN').format(amount)
+  return new Intl.NumberFormat('vi-VN').format(Math.abs(amount))
 }
 
 // Format compact (e.g., 1.5tr, 250k)
 export function formatVNDCompact(amount: number): string {
-  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}tỷ`
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}tr`
-  if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}k`
-  return `${amount}đ`
+  const abs = Math.abs(amount)
+  if (abs >= 1_000_000_000) return `${(abs / 1_000_000_000).toFixed(1)} tỷ`
+  if (abs >= 1_000_000) return `${(abs / 1_000_000).toFixed(1)} tr`
+  if (abs >= 1_000) return `${(abs / 1_000).toFixed(0)}k`
+  return `${abs} ₫`
 }
 
 // Format weight (kg)

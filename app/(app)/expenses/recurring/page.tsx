@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
-import { formatVND, FREQUENCY_LABELS } from '@/lib/format'
+import { formatVND, formatTransactionAmount, FREQUENCY_LABELS } from '@/lib/format'
 import { syncRecurringTransactions, calculateNextDueDate } from '@/lib/recurring-sync'
 import type { RecurringTransaction, ExpenseCategory, Wallet } from '@/lib/types'
 import { toast } from 'sonner'
@@ -88,7 +88,7 @@ export default function RecurringTransactionsPage() {
     const { error } = await supabase.from('transactions').insert({
       user_id: user.id,
       type: item.type,
-      amount: item.amount,
+      amount: Math.abs(item.amount),
       transaction_date: todayStr,
       category_id: item.category_id,
       wallet_id: item.wallet_id,
@@ -124,7 +124,8 @@ export default function RecurringTransactionsPage() {
   async function handleSubmitForm(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
-    if (!form.amount || Number(form.amount) <= 0) { toast.error('Vui lòng nhập số tiền hợp lệ'); return }
+    const amt = Math.abs(Number(form.amount))
+    if (!amt || isNaN(amt) || amt <= 0) { toast.error('Vui lòng nhập số tiền hợp lệ (số dương)'); return }
     if (!form.description.trim()) { toast.error('Vui lòng nhập mô tả'); return }
 
     const supabase = createClient()
@@ -133,8 +134,8 @@ export default function RecurringTransactionsPage() {
     const payload = {
       user_id: user.id,
       type: form.type,
-      amount: Number(form.amount),
-      description: form.description,
+      amount: amt,
+      description: form.description.trim(),
       category_id: form.category_id || null,
       wallet_id: form.wallet_id || null,
       frequency: form.frequency,
@@ -153,6 +154,7 @@ export default function RecurringTransactionsPage() {
     }
 
     setShowModal(false)
+    setLoading(false)
     loadData()
   }
 
@@ -243,7 +245,7 @@ export default function RecurringTransactionsPage() {
                 </div>
 
                 <div className="rc-amount" style={{ color: item.type === 'expense' ? 'var(--peach-500)' : 'var(--mint-500)' }}>
-                  {item.type === 'expense' ? '-' : '+'}{formatVND(item.amount)}
+                  {formatTransactionAmount(item.amount, item.type)}
                 </div>
 
                 <div className="rc-details">

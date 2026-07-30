@@ -31,7 +31,7 @@ export async function syncRecurringTransactions(userId: string) {
           .insert({
             user_id: userId,
             type: rec.type,
-            amount: rec.amount,
+            amount: Math.abs(rec.amount),
             transaction_date: dateStr,
             category_id: rec.category_id,
             wallet_id: rec.wallet_id,

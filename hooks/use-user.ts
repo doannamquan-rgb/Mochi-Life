@@ -10,6 +10,23 @@ export function useUser() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
+  async function fetchProfile(userId: string) {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+    if (data) {
+      setProfile(data)
+    }
+    return data
+  }
+
+  function updateLocalProfile(partial: Partial<UserProfile>) {
+    setProfile(prev => prev ? { ...prev, ...partial } : null)
+  }
+
   useEffect(() => {
     const supabase = createClient()
 
@@ -18,12 +35,7 @@ export function useUser() {
       setUser(user)
 
       if (user) {
-        const { data } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
-        setProfile(data)
+        await fetchProfile(user.id)
       }
       setLoading(false)
     }
@@ -34,12 +46,7 @@ export function useUser() {
       async (_event: any, session: any) => {
         setUser(session?.user ?? null)
         if (session?.user) {
-          const { data } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single()
-          setProfile(data)
+          await fetchProfile(session.user.id)
         } else {
           setProfile(null)
         }
@@ -50,5 +57,11 @@ export function useUser() {
     return () => subscription.unsubscribe()
   }, [])
 
-  return { user, profile, loading }
+  return {
+    user,
+    profile,
+    loading,
+    refreshProfile: async () => { if (user) await fetchProfile(user.id) },
+    updateLocalProfile,
+  }
 }

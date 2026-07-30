@@ -49,12 +49,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       })
     }
 
+    // Theme Sync: Only apply profile.theme if no local click override occurred in this session
+    const localTheme = localStorage.getItem('mochi-theme') as 'light' | 'dark' | null
     if (profile?.theme) {
-      document.documentElement.setAttribute('data-theme', profile.theme)
-      localStorage.setItem('mochi-theme', profile.theme)
+      if (!localTheme) {
+        document.documentElement.setAttribute('data-theme', profile.theme)
+        localStorage.setItem('mochi-theme', profile.theme)
+      } else {
+        document.documentElement.setAttribute('data-theme', localTheme)
+      }
+    } else if (localTheme) {
+      document.documentElement.setAttribute('data-theme', localTheme)
     } else {
-      const savedTheme = localStorage.getItem('mochi-theme') || 'light'
-      document.documentElement.setAttribute('data-theme', savedTheme)
+      document.documentElement.setAttribute('data-theme', 'light')
     }
   }, [profile])
 

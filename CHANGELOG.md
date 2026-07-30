@@ -4,6 +4,23 @@ Tất cả các thay đổi và tính năng mới của dự án **Mochi Life** 
 
 ---
 
+## 🚀 [v3.0.0] - 2026-07-30
+
+### 🌟 Cải tiến lớn & Nâng cấp UX/UI (Major UX/UI & Logic Overhaul)
+
+#### 1. 💰 Quản lý Tài chính, Giao dịch Thu nhập & Chi tiêu hoàn chỉnh
+- **Chuẩn hóa Thu nhập & Chi tiêu**: Form nhập liệu hỗ trợ 2 loại giao dịch độc lập, số tiền dương, tính tổng thu nhập, tổng chi tiêu và số dư tức thì.
+- **Biểu đồ cột ngang nhóm theo danh mục ("Thu chi theo danh mục")**: Hiển thị song song cột Chi tiêu (coral `#FF7A5C`) và Thu nhập (mint `#3BB88E`) trên cùng bộ lọc khoảng thời gian chọn (Hôm nay, Tuần này, Tháng này, Năm nay).
+- **Thẻ chọn Radio độc lập (Radio-Group Pattern)**: Nâng cấp 2 thẻ chọn loại giao dịch riêng biệt với badge check `✓`, hiệu ứng màu sắc nổi bật, hỗ trợ phím mũi tên bàn phím & ARIA accessibility.
+- **Form Inline & Chế độ tập trung (Focused Entry Mode)**: Form hiển thị inline ngay dưới thanh bộ lọc, tự động ẩn toàn bộ danh sách lịch sử giao dịch khi đang nhập liệu và cuộn mượt single-scroll thông minh.
+
+#### 2. 🌙 Chế độ tối (Dark Mode) & Lưu hồ sơ độc lập
+- **Chống flash trắng (Anti-flash Pre-hydration)**: Inline script trong `<head>` áp dụng theme tức thì trước khi render trang.
+- **Đồng bộ Theme 3 cấp**: Kết hợp mượt mà `documentElement`, `localStorage` và Supabase `user_profiles`.
+- **Tách biệt Profile & Theme Persistence**: Thao tác lưu thông tin cá nhân (`display_name`, `height_cm`) hoàn toàn độc lập với việc chọn giao diện.
+
+---
+
 ## 🚀 [v2.0.0] - 2026-07-28
 
 ### 🌟 Tính năng mới & Cải tiến lớn (Major Features)

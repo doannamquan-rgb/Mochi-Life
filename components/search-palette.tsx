@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { Command } from 'cmdk'
+import { formatTransactionAmount } from '@/lib/format'
 
 type SearchResultItem = {
   id: string
@@ -112,7 +113,7 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
         items.push({
           id: t.id,
           title: `${t.type === 'expense' ? 'Giao dịch chi' : 'Giao dịch thu'}: ${t.description || 'Giao dịch'}`,
-          subtitle: `${t.amount.toLocaleString()} đ`,
+          subtitle: formatTransactionAmount(t.amount, t.type),
           category: 'expense',
           href: '/expenses',
         })

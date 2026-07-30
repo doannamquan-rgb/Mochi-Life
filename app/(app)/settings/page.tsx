@@ -9,11 +9,12 @@ import type { HskCourse } from '@/lib/types'
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { user, profile } = useUser()
+  const { user, profile, updateLocalProfile } = useUser()
   const [loading, setLoading] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [height, setHeight] = useState('')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [initUserId, setInitUserId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('profile')
 
   // Course Management State
@@ -32,13 +33,16 @@ export default function SettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [exportLoading, setExportLoading] = useState(false)
 
+  // Initialize form once per authenticated user
   useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.display_name)
+    if (user && profile && initUserId !== user.id) {
+      setDisplayName(profile.display_name ?? '')
       setHeight(profile.height_cm?.toString() ?? '')
-      setTheme(profile.theme ?? 'light')
+      const activeTheme = (localStorage.getItem('mochi-theme') as 'light' | 'dark') || profile.theme || 'light'
+      setTheme(activeTheme)
+      setInitUserId(user.id)
     }
-  }, [profile])
+  }, [user, profile, initUserId])
 
   useEffect(() => {
     if (user) {
@@ -53,22 +57,82 @@ export default function SettingsPage() {
     setCourses(data ?? [])
   }
 
+  async function handleThemeChange(newTheme: 'light' | 'dark') {
+    setTheme(newTheme)
+    document.documentElement.setAttribute('data-theme', newTheme)
+    localStorage.setItem('mochi-theme', newTheme)
+
+    if (!user) return
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .update({ theme: newTheme })
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error || !data) {
+      toast.warning('Đã đổi giao diện trên thiết bị này nhưng chưa thể đồng bộ với tài khoản.')
+    } else {
+      updateLocalProfile({ theme: newTheme })
+      toast.success('Đã cập nhật giao diện thành công!')
+    }
+  }
+
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
+    const trimmedName = displayName.trim()
+    if (!trimmedName) {
+      toast.error('Vui lòng nhập tên hiển thị hợp lệ')
+      return
+    }
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.from('user_profiles').update({
-      display_name: displayName,
-      height_cm: height ? Number(height) : null,
-      theme,
-    }).eq('user_id', user.id)
+    const heightVal = height ? Number(height) : null
 
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('mochi-theme', theme)
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .update({
+        display_name: trimmedName,
+        height_cm: heightVal,
+      })
+      .eq('user_id', user.id)
+      .select()
+      .single()
 
-    if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
-    toast.success('Đã lưu hồ sơ và cài đặt!')
+    if (error) {
+      if (error.code === 'PGRST301') {
+        toast.error('Lỗi quyền truy cập (RLS): Không thể cập nhật hồ sơ.')
+      } else if (error.code === 'PGRST116') {
+        // Missing profile row -> insert
+        const { data: inserted, error: insertErr } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            display_name: trimmedName,
+            height_cm: heightVal,
+            theme,
+          })
+          .select()
+          .single()
+        if (insertErr || !inserted) {
+          toast.error('Lỗi khi tạo mới hồ sơ: ' + (insertErr?.message || 'Không xác định'))
+        } else {
+          updateLocalProfile(inserted)
+          toast.success('Đã lưu hồ sơ thành công!')
+        }
+      } else {
+        toast.error('Lỗi lưu hồ sơ: ' + error.message)
+      }
+      setLoading(false)
+      return
+    }
+
+    if (data) {
+      updateLocalProfile({ display_name: trimmedName, height_cm: heightVal })
+      toast.success('Đã lưu hồ sơ thành công!')
+    }
     setLoading(false)
   }
 
@@ -166,7 +230,7 @@ export default function SettingsPage() {
       ])
       const backup = {
         exported_at: new Date().toISOString(),
-        version: '2.0',
+        version: '3.0.0',
         user_id: user.id,
         data: {
           profile: profiles.data?.[0],
@@ -280,14 +344,14 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     className={`mochi-btn ${theme === 'light' ? 'mochi-btn-primary' : 'mochi-btn-secondary'}`}
-                    onClick={() => setTheme('light')}
+                    onClick={() => handleThemeChange('light')}
                   >
                     ☀️ Sáng
                   </button>
                   <button
                     type="button"
                     className={`mochi-btn ${theme === 'dark' ? 'mochi-btn-primary' : 'mochi-btn-secondary'}`}
-                    onClick={() => setTheme('dark')}
+                    onClick={() => handleThemeChange('dark')}
                   >
                     🌙 Tối
                   </button>
@@ -449,7 +513,7 @@ export default function SettingsPage() {
           <div className="mochi-card about-card" style={{ padding: 32 }}>
             <span style={{ fontSize: '4rem' }}>🐱</span>
             <h2 className="about-title">Mochi Life</h2>
-            <p className="about-version">Phiên bản 2.0.0</p>
+            <p className="about-version">Phiên bản 3.0.0</p>
             <p className="about-desc">Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi giảm cân, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.</p>
             <div className="about-features">
               <div className="feature-item">💪 Giảm cân & Luyện tập</div>
