@@ -4,6 +4,15 @@ Tất cả các thay đổi và tính năng mới của dự án **Mochi Life** 
 
 ---
 
+## 🚀 [v3.1.1] - 2026-07-31
+
+### 🛠️ Sửa lỗi Tương thích Vercel & Kiểm tra An toàn Biến Môi trường (Vercel Stability Fix)
+- **Kiểm tra an toàn Middleware (`proxy.ts`)**: Thêm cơ chế kiểm tra biến môi trường `NEXT_PUBLIC_SUPABASE_URL` & `NEXT_PUBLIC_SUPABASE_ANON_KEY` cùng khối `try-catch` để chống lỗi **500 Internal Server Error** trên Vercel.
+- **Tối ưu hóa Supabase Client SSR**: Thêm giá trị fallback an toàn cho `createBrowserClient` và `createServerClient` khi biến môi trường chưa được thiết lập trên Vercel Dashboard.
+- **Tương thích hoàn toàn với Vercel Deployment**: Loại bỏ xung đột cấu hình middleware giữa Next.js 16 và các phiên bản triển khai trên serverless Edge.
+
+---
+
 ## 🚀 [v3.1.0] - 2026-07-31
 
 ### 🌟 Nâng cấp UX/UI Thêm/Sửa & Nút AssistiveTouch Kéo Thả (Add/Edit Focused UX & Draggable FAB)
