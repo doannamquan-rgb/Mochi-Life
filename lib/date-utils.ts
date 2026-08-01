@@ -51,10 +51,21 @@ export function getGreeting(): string {
   return 'Chào ban đêm'
 }
 
+export type CalendarPeriod = 'today' | 'week' | 'month' | 'year' | 'all'
+export type RollingPeriod = '7d' | '30d' | '3m' | 'all'
+
+export type DateRangeResult =
+  | { kind: 'bounded'; from: Date; toExclusive: Date }
+  | { kind: 'all'; from: null; toExclusive: null }
+
 // Get date range for a chart period
-export function getDateRange(period: '7d' | '30d' | '3m' | '6m' | '1y' | 'all'): { from: Date; to: Date } {
-  const to = new Date()
-  to.setHours(23, 59, 59, 999)
+export function getDateRange(period: RollingPeriod | CalendarPeriod | string): DateRangeResult {
+  if (period === 'all') {
+    return { kind: 'all', from: null, toExclusive: null }
+  }
+  
+  const toExclusive = new Date()
+  toExclusive.setHours(23, 59, 59, 999)
   
   let from = new Date()
   from.setHours(0, 0, 0, 0)
@@ -75,13 +86,11 @@ export function getDateRange(period: '7d' | '30d' | '3m' | '6m' | '1y' | 'all'):
     case '1y':
       from = subYears(from, 1)
       break
-    case 'all':
-      from = new Date(2020, 0, 1)
-      break
   }
   
-  return { from, to }
+  return { kind: 'bounded', from, toExclusive }
 }
+
 
 // Get week range
 export function getWeekRange(date: Date = new Date()): { from: Date; to: Date } {

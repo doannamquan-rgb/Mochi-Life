@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { useDataChanged } from '@/hooks/use-data-changed'
 import { fetchFitnessStats, type FitnessStats } from '@/lib/fitness-stats'
 import { formatWeight, formatDuration, getPercent, EXERCISE_TYPES, getExerciseLabel, getExerciseIcon, INTENSITY_LABELS } from '@/lib/format'
-import { formatDate, todayString } from '@/lib/date-utils'
+import { formatDate, todayString, RollingPeriod } from '@/lib/date-utils'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -27,27 +28,46 @@ export default function FitnessOverviewPage() {
   const { user } = useUser()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<FitnessStats | null>(null)
-  const [period, setPeriod] = useState<'7d' | '30d' | '3m'>('30d')
+  const [selectedPeriod, setSelectedPeriod] = useState<RollingPeriod>('30d')
+  const [appliedPeriod, setAppliedPeriod] = useState<RollingPeriod>('30d')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const requestIdRef = useRef(0)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      requestIdRef.current += 1
+    }
+  }, [])
 
   const loadData = useCallback(async () => {
     if (!user) return
+    const requestId = ++requestIdRef.current
     setLoading(true)
     setErrorMsg(null)
+    setStats(null) // Hide old period data while loading new period
     const supabase = createClient()
     try {
-      const res = await fetchFitnessStats(supabase, user.id, period)
+      const res = await fetchFitnessStats(supabase, user.id, selectedPeriod)
+      if (!mountedRef.current || requestId !== requestIdRef.current) return
       setStats(res)
+      setAppliedPeriod(selectedPeriod)
       if (res.error) {
         setErrorMsg('Lỗi khi tải dữ liệu thể thao: ' + res.error)
       }
     } catch (err: any) {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return
       console.error('Failed to load fitness stats:', err)
       setErrorMsg('Không thể kết nối để lấy dữ liệu thể thao.')
     } finally {
-      setLoading(false)
+      if (mountedRef.current && requestId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
-  }, [user, period])
+  }, [user, selectedPeriod])
 
   useEffect(() => {
     if (user) loadData()
@@ -113,16 +133,19 @@ export default function FitnessOverviewPage() {
 
       {/* Period filter */}
       <div className="period-filter">
-        {(['7d', '30d', '3m'] as const).map(p => (
+        {(['7d', '30d', '3m', 'all'] as const).map(p => (
           <button
             key={p}
-            className={`period-btn ${period === p ? 'active' : ''}`}
-            onClick={() => setPeriod(p)}
+            type="button"
+            aria-pressed={selectedPeriod === p}
+            className={`period-btn ${selectedPeriod === p ? 'active' : ''}`}
+            onClick={() => setSelectedPeriod(p)}
           >
-            {p === '7d' ? '7 ngày' : p === '30d' ? '30 ngày' : '3 tháng'}
+            {p === '7d' ? '7 ngày' : p === '30d' ? '30 ngày' : p === '3m' ? '3 tháng' : 'Tất cả'}
           </button>
         ))}
       </div>
+
 
       {/* Quick stats */}
       <div className="stats-grid">
@@ -292,6 +315,7 @@ export default function FitnessOverviewPage() {
           display: flex;
           gap: 8px;
           margin-bottom: 20px;
+          flex-wrap: wrap;
         }
 
         .period-btn {

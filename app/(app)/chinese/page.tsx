@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
@@ -8,6 +9,7 @@ import { useDataChanged } from '@/hooks/use-data-changed'
 import { fetchChineseStats, type ChineseStats } from '@/lib/chinese-stats'
 import { notifyDataChanged } from '@/lib/events'
 import { toast } from 'sonner'
+import { CalendarPeriod } from '@/lib/date-utils'
 
 function ProgressRing({ value, max, color, size = 80 }: { value: number; max: number; color: string; size?: number }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
@@ -37,26 +39,46 @@ export default function ChinesePage() {
   const { user, profile } = useUser()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<ChineseStats | null>(null)
+  const [selectedPeriod, setSelectedPeriod] = useState<CalendarPeriod>('month')
+  const [appliedPeriod, setAppliedPeriod] = useState<CalendarPeriod>('month')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const requestIdRef = useRef(0)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      requestIdRef.current += 1
+    }
+  }, [])
 
   const loadData = useCallback(async () => {
     if (!user) return
+    const requestId = ++requestIdRef.current
     setLoading(true)
     setErrorMsg(null)
+    setStats(null) // Clear old period dataset during fetch
     const supabase = createClient()
     try {
-      const res = await fetchChineseStats(supabase, user.id, profile?.active_hsk_course_id)
+      const res = await fetchChineseStats(supabase, user.id, profile?.active_hsk_course_id, selectedPeriod)
+      if (!mountedRef.current || requestId !== requestIdRef.current) return
       setStats(res)
+      setAppliedPeriod(selectedPeriod)
       if (res.error) {
         setErrorMsg('Không thể lấy đầy đủ thống kê từ server: ' + res.error)
       }
     } catch (err: any) {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return
       console.error('Failed to load Chinese stats:', err)
       setErrorMsg('Đã xảy ra lỗi khi tải dữ liệu tiếng Trung.')
     } finally {
-      setLoading(false)
+      if (mountedRef.current && requestId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
-  }, [user, profile?.active_hsk_course_id])
+  }, [user, profile?.active_hsk_course_id, selectedPeriod])
 
   useEffect(() => {
     if (user) {
@@ -97,6 +119,7 @@ export default function ChinesePage() {
       </div>
     )
   }
+
 
   if (errorMsg && !stats?.activeCourse) {
     return (
@@ -217,29 +240,87 @@ export default function ChinesePage() {
             </div>
           </div>
 
-          {/* Today stats */}
+          {/* Period filter */}
+          <div className="period-filter">
+            {(['today', 'week', 'month', 'year', 'all'] as const).map(p => (
+              <button
+                key={p}
+                type="button"
+                aria-pressed={selectedPeriod === p}
+                className={`period-btn ${selectedPeriod === p ? 'active' : ''}`}
+                onClick={() => setSelectedPeriod(p)}
+              >
+                {p === 'today' ? 'Hôm nay'
+                  : p === 'week' ? 'Tuần này'
+                  : p === 'month' ? 'Tháng này'
+                  : p === 'year' ? 'Năm nay'
+                  : 'Tất cả'}
+              </button>
+            ))}
+          </div>
+
+          {/* Period-based stats section */}
           <div className="today-stats">
             <div className="today-stat">
               <div className="ts-emoji">📖</div>
-              <div className="ts-value">{stats?.newTodayVocabulary ?? 0}</div>
-              <div className="ts-label">từ mới hôm nay</div>
+              <div className="ts-value">{stats?.periodNewWords ?? 0}</div>
+              <div className="ts-label">
+                {appliedPeriod === 'today' ? 'từ mới hôm nay'
+                  : appliedPeriod === 'week' ? 'từ mới tuần này'
+                  : appliedPeriod === 'month' ? 'từ mới tháng này'
+                  : appliedPeriod === 'year' ? 'từ mới năm nay'
+                  : 'từ mới tất cả'}
+              </div>
               {stats?.studyGoal && <div className="ts-goal">Mục tiêu: {stats.studyGoal.daily_new_words}</div>}
             </div>
             <div className="today-stat">
               <div className="ts-emoji">🔄</div>
-              <div className="ts-value">{stats?.reviewedVocabulary ?? 0}</div>
-              <div className="ts-label">từ đã ôn</div>
+              <div className="ts-value">{stats?.periodReviewCount ?? 0}</div>
+              <div className="ts-label">
+                {appliedPeriod === 'today' ? 'Lượt ôn hôm nay'
+                  : appliedPeriod === 'week' ? 'Lượt ôn tuần này'
+                  : appliedPeriod === 'month' ? 'Lượt ôn tháng này'
+                  : appliedPeriod === 'year' ? 'Lượt ôn năm nay'
+                  : 'Tổng lượt ôn'}
+              </div>
+              <div className="ts-goal">{stats?.periodReviewedWordCount ?? 0} từ khác nhau</div>
             </div>
             <div className="today-stat">
               <div className="ts-emoji">⏱️</div>
-              <div className="ts-value">{todayMinutes}</div>
-              <div className="ts-label">phút học</div>
+              <div className="ts-value">{stats?.periodMinutes ?? 0}</div>
+              <div className="ts-label">
+                {appliedPeriod === 'today' ? 'Phút học hôm nay'
+                  : appliedPeriod === 'week' ? 'Phút học tuần này'
+                  : appliedPeriod === 'month' ? 'Phút học tháng này'
+                  : appliedPeriod === 'year' ? 'Phút học năm nay'
+                  : 'Tổng phút học'}
+              </div>
               {stats?.studyGoal && <div className="ts-goal">Mục tiêu: {stats.studyGoal.daily_minutes}p</div>}
             </div>
             <div className="today-stat">
+              <div className="ts-emoji">📝</div>
+              <div className="ts-value">{stats?.periodSessions ?? 0}</div>
+              <div className="ts-label">
+                {appliedPeriod === 'today' ? 'Buổi học hôm nay'
+                  : appliedPeriod === 'week' ? 'Buổi học tuần này'
+                  : appliedPeriod === 'month' ? 'Buổi học tháng này'
+                  : appliedPeriod === 'year' ? 'Buổi học năm nay'
+                  : 'Tổng buổi học'}
+              </div>
+            </div>
+          </div>
+
+          {/* Whole-course extra stats (Preserving masteredVocabulary and dueVocabulary) */}
+          <div className="course-extra-stats">
+            <div className="today-stat">
               <div className="ts-emoji">🌟</div>
               <div className="ts-value">{stats?.masteredVocabulary ?? 0}</div>
-              <div className="ts-label">từ thành thạo</div>
+              <div className="ts-label">từ thành thạo (toàn khóa)</div>
+            </div>
+            <div className="today-stat">
+              <div className="ts-emoji">🎯</div>
+              <div className="ts-value">{stats?.dueVocabulary ?? 0}</div>
+              <div className="ts-label">từ đến hạn ôn</div>
             </div>
           </div>
 
@@ -283,12 +364,16 @@ export default function ChinesePage() {
         .page-title { font-size: 1.4rem; font-weight: 800; color: var(--chocolate-600); margin: 0; }
         .page-subtitle { font-size: 0.875rem; color: var(--chocolate-400); font-weight: 600; margin: 4px 0 0; }
         .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .period-filter { display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+        .period-btn { padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--chocolate-200); background: white; color: var(--chocolate-500); font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; font-family: 'Nunito', sans-serif; }
+        .period-btn.active { background: var(--lavender-400); border-color: var(--lavender-400); color: white; }
         .hero-card { background: linear-gradient(135deg, #F5F2FF, #FFFDF0); border-radius: 24px; padding: 24px; border: 1.5px solid var(--lavender-200); box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
         .hsk-badge { display: inline-block; background: var(--lavender-400); color: white; font-weight: 800; font-size: 0.75rem; padding: 4px 12px; border-radius: 999px; margin-bottom: 8px; }
         .hero-title { font-size: 1.5rem; font-weight: 800; color: var(--chocolate-600); margin: 0 0 4px; }
         .hero-sub { font-size: 0.875rem; color: var(--chocolate-400); font-weight: 600; margin: 0 0 12px; }
         .hero-streak { display: inline-flex; align-items: center; gap: 6px; background: white; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--chocolate-100); font-weight: 700; font-size: 0.85rem; }
         .today-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .course-extra-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .today-stat { background: white; border-radius: 20px; padding: 16px; border: 1.5px solid var(--chocolate-100); text-align: center; box-shadow: var(--shadow-sm); }
         .ts-emoji { font-size: 1.5rem; margin-bottom: 4px; }
         .ts-value { font-size: 1.3rem; font-weight: 800; color: var(--chocolate-600); }
@@ -304,6 +389,7 @@ export default function ChinesePage() {
           .today-stats { grid-template-columns: repeat(2, 1fr); }
           .hero-ring { display: none; }
         }
+
       `}</style>
     </div>
   )

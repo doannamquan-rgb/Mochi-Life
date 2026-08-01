@@ -29,6 +29,23 @@ export function formatVNDCompact(amount: number): string {
   return `${abs} ₫`
 }
 
+// Format VND preserving sign (for balance / net displays)
+export function formatSignedVND(amount: number, options?: { showPositiveSign?: boolean }): string {
+  const formatted = formatVND(amount)
+  if (amount < 0) return `-${formatted}`
+  if (amount > 0 && options?.showPositiveSign) return `+${formatted}`
+  return formatted
+}
+
+// Format VND compact preserving sign (for balance / net displays)
+export function formatSignedVNDCompact(amount: number, options?: { showPositiveSign?: boolean }): string {
+  const formatted = formatVNDCompact(amount)
+  if (amount < 0) return `-${formatted}`
+  if (amount > 0 && options?.showPositiveSign) return `+${formatted}`
+  return formatted
+}
+
+
 // Format weight (kg)
 export function formatWeight(weight: number, unit: 'kg' | 'lbs' = 'kg'): string {
   if (unit === 'lbs') return `${(weight * 2.205).toFixed(1)} lbs`

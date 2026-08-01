@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
-import { formatVNDCompact, getExerciseLabel } from '@/lib/format'
+import { formatVNDCompact, formatSignedVNDCompact, getExerciseLabel } from '@/lib/format'
 import { formatDate } from '@/lib/date-utils'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -296,7 +296,7 @@ export default function ReportsPage() {
           <div className="summary-stats-grid">
             <div className="sum-stat"><div className="ss-val expense-val">{formatVNDCompact(totalExpense)}</div><div className="ss-label">Tổng chi</div></div>
             <div className="sum-stat"><div className="ss-val income-val">{formatVNDCompact(totalIncome)}</div><div className="ss-label">Tổng thu</div></div>
-            <div className="sum-stat"><div className={`ss-val ${totalIncome - totalExpense >= 0 ? 'income-val' : 'expense-val'}`}>{formatVNDCompact(totalIncome - totalExpense)}</div><div className="ss-label">Số dư</div></div>
+            <div className="sum-stat"><div className={`ss-val ${totalIncome - totalExpense > 0 ? 'income-val' : totalIncome - totalExpense < 0 ? 'expense-val' : ''}`}>{formatSignedVNDCompact(totalIncome - totalExpense, { showPositiveSign: true })}</div><div className="ss-label">Số dư</div></div>
           </div>
         </div>
       )}

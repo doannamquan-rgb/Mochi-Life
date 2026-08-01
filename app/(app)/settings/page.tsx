@@ -515,7 +515,7 @@ export default function SettingsPage() {
             <span className="animate-float" style={{ fontSize: '3.5rem' }}>🐱</span>
             <h2 className="about-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--chocolate-600)', margin: 0 }}>Mochi Life</h2>
             <div style={{ background: 'var(--lavender-100)', color: 'var(--lavender-600)', padding: '4px 14px', borderRadius: 999, fontWeight: 800, fontSize: '0.85rem' }}>
-              Phiên bản 3.3.0
+              Phiên bản 3.4.0
             </div>
             <p className="about-desc" style={{ fontSize: '0.9rem', color: 'var(--chocolate-400)', fontWeight: 600, maxWidth: 500, margin: 0 }}>
               Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi giảm cân, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.
@@ -537,7 +537,6 @@ export default function SettingsPage() {
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--chocolate-600)' }}>Tác giả & Phát triển</h3>
                 <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--lavender-500)', marginTop: 2 }}>Đoàn Nam Quân</div>
-                <span style={{ fontSize: '0.78rem', color: 'var(--chocolate-400)', fontWeight: 600 }}>Senior Full-stack Engineer · Creator of Mochi Life</span>
               </div>
             </div>
 

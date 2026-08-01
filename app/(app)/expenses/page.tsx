@@ -6,11 +6,13 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
-import { formatVND, formatTransactionAmount } from '@/lib/format'
-import { todayString, formatDate } from '@/lib/date-utils'
+import { formatVND, formatTransactionAmount, formatSignedVND } from '@/lib/format'
+import { todayString, formatDate, CalendarPeriod } from '@/lib/date-utils'
 import { syncRecurringTransactions } from '@/lib/recurring-sync'
 import type { Transaction, ExpenseCategory, Wallet } from '@/lib/types'
+import { fetchAllRows } from '@/lib/supabase/fetchAllRows'
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+
 
 function TransactionForm({ onClose, onSaved, categories, wallets, existing }: {
   onClose: () => void
@@ -208,10 +210,23 @@ function ExpensePageContent() {
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all')
   const [filterCat, setFilterCat] = useState('')
   const [search, setSearch] = useState('')
-  const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month')
+  const [selectedPeriod, setSelectedPeriod] = useState<CalendarPeriod>('month')
+  const [appliedPeriod, setAppliedPeriod] = useState<CalendarPeriod>('month')
   const hasScrolledRef = useRef(false)
+  const requestIdRef = useRef(0)
+  const mountedRef = useRef(true)
 
-  useEffect(() => { if (user) loadData() }, [user, period])
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      requestIdRef.current += 1
+    }
+  }, [])
+
+  useEffect(() => {
+    if (user) loadData()
+  }, [user, selectedPeriod])
 
   // Single-scroll into view when form opens & focus first input
   useEffect(() => {
@@ -238,6 +253,7 @@ function ExpensePageContent() {
 
   async function loadData() {
     if (!user) return
+    const requestId = ++requestIdRef.current
     setLoading(true)
 
     // Sync recurring transactions
@@ -247,43 +263,62 @@ function ExpensePageContent() {
     const now = new Date()
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
-    let from = todayStr
-    let to = todayStr
+    let from: string | null = todayStr
+    let to: string | null = todayStr
 
-    if (period === 'today') {
+    if (selectedPeriod === 'today') {
       from = todayStr
       to = todayStr
-    } else if (period === 'week') {
+    } else if (selectedPeriod === 'week') {
       const d = new Date(now)
       d.setDate(d.getDate() - 6)
       from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       to = todayStr
-    } else if (period === 'month') {
+    } else if (selectedPeriod === 'month') {
       from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
       to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    } else {
+    } else if (selectedPeriod === 'year') {
       from = `${now.getFullYear()}-01-01`
       to = `${now.getFullYear()}-12-31`
+    } else {
+      // 'all'
+      from = null
+      to = null
     }
 
     const [txRes, catRes, walRes] = await Promise.all([
-      supabase.from('transactions')
-        .select('*, category:expense_categories(id,name,icon,color,type), wallet:wallets(id,name,icon)')
-        .eq('user_id', user.id)
-        .gte('transaction_date', from)
-        .lte('transaction_date', to)
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false }),
+      fetchAllRows<Transaction>((rangeFrom, rangeTo) => {
+        let q = supabase.from('transactions')
+          .select('*, category:expense_categories(id,name,icon,color,type), wallet:wallets(id,name,icon)', { count: 'exact' })
+          .eq('user_id', user.id)
+        if (from && to) {
+          q = q.gte('transaction_date', from).lte('transaction_date', to)
+        }
+        q = q.order('transaction_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
+        return q.range(rangeFrom, rangeTo)
+      }),
       supabase.from('expense_categories').select('*').eq('user_id', user.id).order('sort_order'),
       supabase.from('wallets').select('*').eq('user_id', user.id),
     ])
 
-    setTransactions(txRes.data ?? [])
+    if (!mountedRef.current || requestId !== requestIdRef.current) return
+
+    if (!txRes.ok) {
+      toast.error('Không thể tải giao dịch: ' + txRes.error.message)
+      setLoading(false)
+      return
+    }
+
+    setTransactions(txRes.data)
     setCategories(catRes.data ?? [])
     setWallets(walRes.data ?? [])
+    setAppliedPeriod(selectedPeriod)
     setLoading(false)
   }
+
 
   async function deleteTx(id: string) {
     if (!confirm('Bạn có chắc chắn muốn xóa giao dịch này?')) return
@@ -349,7 +384,11 @@ function ExpensePageContent() {
   const catChartData = Object.values(catMap).sort((a, b) => (b.expense + b.income) - (a.expense + a.income))
   const chartHeight = Math.max(220, catChartData.length * 52)
 
-  const periodLabel = period === 'today' ? 'Hôm nay' : period === 'week' ? 'Tuần này' : period === 'month' ? 'Tháng này' : 'Năm nay'
+  const periodLabel = appliedPeriod === 'today' ? 'Hôm nay'
+    : appliedPeriod === 'week' ? 'Tuần này'
+    : appliedPeriod === 'month' ? 'Tháng này'
+    : appliedPeriod === 'year' ? 'Năm nay'
+    : 'Tất cả'
 
   return (
     <div className="page">
@@ -378,19 +417,30 @@ function ExpensePageContent() {
         <div className="summary-card balance">
           <div className="sc-label">💳 Số dư</div>
           <div className={`sc-value ${balance > 0 ? 'positive' : balance < 0 ? 'negative' : ''}`}>
-            {balance > 0 ? '+' : ''}{formatVND(balance)}
+            {formatSignedVND(balance, { showPositiveSign: true })}
           </div>
         </div>
       </div>
 
       {/* Period filter */}
       <div className="period-filter">
-        {(['today', 'week', 'month', 'year'] as const).map(p => (
-          <button key={p} className={`period-btn ${period === p ? 'active' : ''}`} onClick={() => setPeriod(p)}>
-            {p === 'today' ? 'Hôm nay' : p === 'week' ? 'Tuần này' : p === 'month' ? 'Tháng này' : 'Năm nay'}
+        {(['today', 'week', 'month', 'year', 'all'] as const).map(p => (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={selectedPeriod === p}
+            className={`period-btn ${selectedPeriod === p ? 'active' : ''}`}
+            onClick={() => setSelectedPeriod(p)}
+          >
+            {p === 'today' ? 'Hôm nay'
+              : p === 'week' ? 'Tuần này'
+              : p === 'month' ? 'Tháng này'
+              : p === 'year' ? 'Năm nay'
+              : 'Tất cả'}
           </button>
         ))}
       </div>
+
 
       {/* Category chart */}
       <div className="mochi-card" style={{ padding: 20, marginBottom: 16 }}>
