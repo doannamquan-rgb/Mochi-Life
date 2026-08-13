@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { useDataChanged } from '@/hooks/use-data-changed'
 import { notifyDataChanged } from '@/lib/events'
+import { useMochiReaction } from '@/hooks/use-mochi-reaction'
 import { toast } from 'sonner'
 import { formatDate, todayString } from '@/lib/date-utils'
 import type { WeightLog, WeightGoal } from '@/lib/types'
@@ -19,6 +20,7 @@ function WeightForm({ onClose, onSaved, existing }: {
   existing?: WeightLog
 }) {
   const { user } = useUser()
+  const { triggerReaction } = useMochiReaction()
   const [date, setDate] = useState(existing?.log_date ?? todayString())
   const [weight, setWeight] = useState(existing?.weight?.toString() ?? '')
   const [waist, setWaist] = useState(existing?.waist_cm?.toString() ?? '')
@@ -95,6 +97,10 @@ function WeightForm({ onClose, onSaved, existing }: {
 
     toast.success(existing ? 'Cập nhật bản ghi cân nặng thành công!' : 'Đã ghi lại cân nặng thành công! 🎉')
     notifyDataChanged('fitness', 'weight')
+    // Fire Smart Reaction only on new logs (not edits)
+    if (!existing) {
+      triggerReaction('weight_logged', { dedupKey: date, delayMs: 400 })
+    }
     onSaved()
     onClose()
   }

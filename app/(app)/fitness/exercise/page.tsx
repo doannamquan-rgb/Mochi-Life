@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { useDataChanged } from '@/hooks/use-data-changed'
 import { notifyDataChanged } from '@/lib/events'
+import { useMochiReaction } from '@/hooks/use-mochi-reaction'
 import { toast } from 'sonner'
 import { formatDate, todayString } from '@/lib/date-utils'
 import { getExerciseLabel, getExerciseIcon, EXERCISE_TYPES, INTENSITY_LABELS, estimateCalories } from '@/lib/format'
@@ -20,6 +21,7 @@ function ExerciseForm({ onClose, onSaved, existing }: {
   existing?: ExerciseLog
 }) {
   const { user } = useUser()
+  const { triggerReaction } = useMochiReaction()
   const [date, setDate] = useState(existing?.log_date ?? todayString())
   const [type, setType] = useState(existing?.exercise_type ?? 'walking')
   const [duration, setDuration] = useState(existing?.duration_minutes?.toString() ?? '')
@@ -138,6 +140,10 @@ function ExerciseForm({ onClose, onSaved, existing }: {
 
     toast.success(existing ? 'Cập nhật buổi tập thành công!' : `Đã thêm buổi tập thành công! 🎉 ${getExerciseIcon(type)}`)
     notifyDataChanged('fitness', 'exercise')
+    // Fire Smart Reaction only on new logs (not edits)
+    if (!existing) {
+      triggerReaction('exercise_logged', { dedupKey: date, delayMs: 400 })
+    }
     onSaved()
     onClose()
   }

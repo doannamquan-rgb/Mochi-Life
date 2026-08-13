@@ -11,6 +11,7 @@ import { AppleHomeButton } from '@/components/apple-home-button'
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', emoji: '🏠' },
+  { href: '/ai', label: 'Mochi AI', emoji: '🐱' },
   { href: '/fitness', label: 'Giảm cân', emoji: '💪' },
   { href: '/chinese', label: 'Tiếng Trung', emoji: '🈶' },
   { href: '/expenses', label: 'Chi tiêu', emoji: '💰' },
@@ -20,13 +21,14 @@ const navItems = [
 
 const bottomNavItems = [
   { href: '/dashboard', label: 'Tổng quan', emoji: '🏠' },
-  { href: '/fitness', label: 'Giảm cân', emoji: '💪' },
+  { href: '/ai', label: 'Mochi AI', emoji: '🐱' },
   { href: '/chinese', label: 'Học', emoji: '🈶' },
+  { href: '/fitness', label: 'Giảm cân', emoji: '💪' },
   { href: '/expenses', label: 'Chi tiêu', emoji: '💰' },
-  { href: '/reports', label: 'Báo cáo', emoji: '📊' },
 ]
 
 const fabActions = [
+  { label: 'Hỏi Mochi AI', emoji: '🐱', href: '/ai' },
   { label: 'Ghi cân nặng', emoji: '⚖️', href: '/fitness/weight?action=add' },
   { label: 'Thêm buổi tập', emoji: '🏃', href: '/fitness/exercise?action=add' },
   { label: 'Ghi buổi học', emoji: '📖', href: '/chinese/journal?action=add' },

@@ -219,6 +219,9 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
               <Command.Item onSelect={() => handleSelect('/dashboard')} className="command-item">
                 🏠 Trang chủ Tổng quan
               </Command.Item>
+              <Command.Item onSelect={() => handleSelect('/ai')} className="command-item">
+                🐱 Mochi AI Coach
+              </Command.Item>
               <Command.Item onSelect={() => handleSelect('/fitness')} className="command-item">
                 💪 Giảm cân & Luyện tập
               </Command.Item>

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
+import { useMochiReaction } from '@/hooks/use-mochi-reaction'
 import { formatDate, todayString } from '@/lib/date-utils'
 import type { StudySession } from '@/lib/types'
 
@@ -14,6 +15,7 @@ function JournalForm({ onClose, onSaved, existing }: {
   existing?: StudySession
 }) {
   const { user } = useUser()
+  const { triggerReaction } = useMochiReaction()
   const [date, setDate] = useState(existing?.session_date ?? todayString())
   const [newWords, setNewWords] = useState(existing?.new_words_count?.toString() ?? '0')
   const [reviewWords, setReviewWords] = useState(existing?.reviewed_words_count?.toString() ?? '0')
@@ -45,6 +47,10 @@ function JournalForm({ onClose, onSaved, existing }: {
       : await supabase.from('study_sessions').upsert(payload, { onConflict: 'user_id,session_date' })
     if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
     toast.success(existing ? 'Đã cập nhật!' : 'Đã ghi buổi học! 🎉')
+    // Fire Smart Reaction only on new sessions (not edits)
+    if (!existing) {
+      triggerReaction('study_session_completed', { dedupKey: date, delayMs: 400 })
+    }
     onSaved(); onClose()
   }
 

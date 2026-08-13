@@ -83,7 +83,8 @@ Trong **Supabase Dashboard → SQL Editor**, chạy lần lượt nội dung c�
 3. `supabase/migrations/003_seed_achievements.sql` — Khởi tạo danh sách danh hiệu ban đầu
 4. `supabase/migrations/004_generalize_hsk_and_courses.sql` — Tổng quát hóa hệ thống HSK & giao dịch định kỳ
 5. `supabase/migrations/005_xp_gamification_and_achievements.sql` — Bổ sung RPC kiểm tra thành tích & nhật ký XP
-
+6. `supabase/migrations/006_audit_and_fix_transactions.sql` — Audit and fix transaction data integrity
+7. `supabase/migrations/007_data_sync_and_course_integrity.sql` — Data sync and course integrity
 ### 5. Cấu hình Supabase Authentication
 1. Truy cập **Supabase Dashboard → Authentication → Providers**.
 2. Chọn **Email** → Enabled ✅.
@@ -95,6 +96,17 @@ Trong **Supabase Dashboard → SQL Editor**, chạy lần lượt nội dung c�
 npm run dev
 ```
 Mở trình duyệt tại: `http://localhost:3000`
+
+### 7. Mochi AI Setup (Optional)
+Ứng dụng có thể hoạt động hoàn toàn độc lập không cần AI. Nếu muốn bật tính năng trợ lý ảo:
+1. Thêm các biến sau vào `.env.local`:
+```env
+GEMINI_API_KEY=your_api_key_here
+GEMINI_MODEL=gemini-3.6-flash
+MOCHI_AI_ENABLED=true
+```
+2. Lấy API key miễn phí từ Google AI Studio.
+3. Lưu ý bảo mật: API key chỉ được cấu hình phía Server. Mochi AI là trợ lý Read-only và chỉ đọc dữ liệu tổng hợp để hỗ trợ bạn (không lưu trữ ngoài ý muốn).
 
 ---
 

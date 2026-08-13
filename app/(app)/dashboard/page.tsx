@@ -7,6 +7,7 @@ import { useUser } from '@/hooks/use-user'
 import { useDataChanged } from '@/hooks/use-data-changed'
 import { fetchChineseStats, type ChineseStats } from '@/lib/chinese-stats'
 import { fetchFitnessStats, type FitnessStats } from '@/lib/fitness-stats'
+import { MochiDailyBrief } from '@/components/ai/MochiDailyBrief'
 import { getGreeting, formatDate, todayString, getDateRange } from '@/lib/date-utils'
 import { formatVND, formatVNDCompact, formatWeight, formatDuration, getPercent, EXERCISE_TYPES } from '@/lib/format'
 import type { WeightLog, WeightGoal, ExerciseLog, FitnessGoal, StudySession, StudyGoal, Transaction, Budget, ExpenseCategory, HskVocabulary, HskLesson } from '@/lib/types'
@@ -135,6 +136,9 @@ export default function DashboardPage() {
           <span className="greeting-mascot animate-float">🐱</span>
         </div>
       </div>
+
+      {/* Mochi Daily Brief */}
+      {user && <MochiDailyBrief userId={user.id} />}
 
       {/* 3 Module Cards */}
       <div className="dashboard-cards">

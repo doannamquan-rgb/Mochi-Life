@@ -53,13 +53,13 @@ export function AppleHomeButton({ onOpenSearch }: { onOpenSearch?: () => void })
 
   const quickActions = [
     { label: 'Trang chủ', emoji: '🏠', href: '/dashboard', action: () => router.push('/dashboard') },
+    { label: 'Mochi AI Coach', emoji: '🐱', href: '/ai', action: () => router.push('/ai') },
     { label: 'Học tiếng Trung', emoji: '🈶', href: '/chinese', action: () => router.push('/chinese') },
     { label: 'Ôn từ vựng', emoji: '🃏', href: '/chinese/review', action: () => router.push('/chinese/review') },
     { label: 'Ghi cân nặng', emoji: '⚖️', href: '/fitness/weight?action=add', action: () => router.push('/fitness/weight?action=add') },
     { label: 'Thêm buổi tập', emoji: '🏃', href: '/fitness/exercise?action=add', action: () => router.push('/fitness/exercise?action=add') },
     { label: 'Thêm giao dịch', emoji: '💸', href: '/expenses?action=add', action: () => router.push('/expenses?action=add') },
     { label: 'Tìm kiếm', emoji: '🔍', action: () => { setMenuOpen(false); onOpenSearch?.() } },
-    { label: 'Cuộn lên đầu', emoji: '⬆️', action: scrollToTop },
     { label: 'Cài đặt', emoji: '⚙️', href: '/settings', action: () => router.push('/settings') },
   ]
 

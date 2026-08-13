@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
+import { useMochiReaction } from '@/hooks/use-mochi-reaction'
 import { formatVND, formatTransactionAmount, formatSignedVND } from '@/lib/format'
 import { todayString, formatDate, CalendarPeriod } from '@/lib/date-utils'
 import { syncRecurringTransactions } from '@/lib/recurring-sync'
@@ -22,6 +23,7 @@ function TransactionForm({ onClose, onSaved, categories, wallets, existing }: {
   existing?: Transaction
 }) {
   const { user } = useUser()
+  const { triggerReaction } = useMochiReaction()
   const [type, setType] = useState<'expense' | 'income'>(existing?.type ?? 'expense')
   const [amount, setAmount] = useState(existing?.amount ? Math.abs(existing.amount).toString() : '')
   const [date, setDate] = useState(existing?.transaction_date ?? todayString())
@@ -75,6 +77,13 @@ function TransactionForm({ onClose, onSaved, categories, wallets, existing }: {
     }
 
     toast.success(existing ? 'Đã cập nhật giao dịch thành công!' : `Đã lưu ${type === 'expense' ? 'khoản chi' : 'khoản thu'} thành công! 🎉`)
+    // Fire Smart Reaction only on new transactions (not edits)
+    if (!existing) {
+      triggerReaction(
+        type === 'expense' ? 'transaction_expense_created' : 'transaction_income_created',
+        { dedupKey: `${type}_${date}_${Date.now()}`, delayMs: 400 }
+      )
+    }
     onSaved()
     onClose()
   }

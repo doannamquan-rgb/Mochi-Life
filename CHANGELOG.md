@@ -4,6 +4,14 @@ Tất cả các thay đổi và tính năng mới của dự án **Mochi Life** 
 
 ---
 
+## 🚀 [v4.0.0] - 2026-08-10
+
+### 🌟 Mochi AI Coach — Personal Life Assistant 🐱
+- AI integration with Gemini, read-only assistant, Daily Brief, study/fitness/finance context
+- Note: Read-only AI, no database write actions yet
+
+---
+
 ## 🚀 [v3.1.1] - 2026-07-31
 
 ### 🛠️ Sửa lỗi Tương thích Vercel & Kiểm tra An toàn Biến Môi trường (Vercel Stability Fix)

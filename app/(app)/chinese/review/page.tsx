@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { calculateNextReview } from '@/lib/spaced-repetition'
 import { MEMORY_LEVEL_LABELS } from '@/lib/format'
 import { notifyDataChanged } from '@/lib/events'
+import { useMochiReaction } from '@/hooks/use-mochi-reaction'
 import type { HskVocabulary, ReviewRating } from '@/lib/types'
 import { formatDate } from '@/lib/date-utils'
 
@@ -19,6 +20,7 @@ const WORD_TYPE_LABELS: Record<string, string> = {
 
 export default function ReviewPage() {
   const { user } = useUser()
+  const { triggerReaction } = useMochiReaction()
   const [dueCards, setDueCards] = useState<HskVocabulary[]>([])
   const [index, setIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
@@ -103,6 +105,9 @@ export default function ReviewPage() {
         duration_minutes: Math.max(1, durationMinutes),
         is_auto_generated: true,
       }, { onConflict: 'user_id,session_date' })
+      // Fire Smart Reaction for completed review session
+      const todayDate = new Date().toISOString().split('T')[0]
+      triggerReaction('review_session_completed', { dedupKey: todayDate, delayMs: 600 })
       setDone(true)
     } else {
       setIndex(i => i + 1)
