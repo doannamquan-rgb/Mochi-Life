@@ -81,9 +81,17 @@ export async function POST(request: Request) {
     })
   } catch (err: any) {
     console.error('[Mochi AI Chat Error]:', err)
-    const message = err?.message?.includes('Timeout')
-      ? 'Mochi phản hồi hơi lâu, bạn thử lại lần nữa nhé!'
-      : 'Mochi chưa xử lý được câu trả lời này. Bạn có thể thử lại.'
+    let message = 'Mochi chưa xử lý được câu trả lời này. Bạn có thể thử lại.'
+
+    if (err?.message && typeof err.message === 'string') {
+      if (err.message.includes('Mochi AI đang bận') || err.message.includes('Mochi phản hồi')) {
+        message = err.message
+      } else if (err.message.includes('Timeout') || err.message.includes('timeout')) {
+        message = 'Mochi phản hồi hơi lâu, bạn thử lại lần nữa nhé!'
+      } else if (err.message.includes('RESOURCE_EXHAUSTED') || err.message.includes('429') || err.message.includes('Quota')) {
+        message = 'Mochi AI đang nhận được quá nhiều câu hỏi cùng lúc, bạn đợi một lát rồi thử lại nha! 🐱⏳'
+      }
+    }
 
     return NextResponse.json(
       { error: message, code: 'INTERNAL_ERROR' },

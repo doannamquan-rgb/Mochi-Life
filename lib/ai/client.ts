@@ -60,19 +60,41 @@ export async function generateChatResponse(systemPrompt: string, messages: Mochi
   const { signal, cleanup } = createTimeoutAbort(CHAT_TIMEOUT_MS);
 
   try {
-    const formattedMessages = messages.map(m => ({
-      role: m.role,
-      parts: [{ text: m.content }]
-    }));
-    
-    formattedMessages.push({
-      role: 'user',
-      parts: [{ text: userMessage }]
-    });
+    const rawContents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+
+    // Filter valid history and map 'assistant' role to Gemini's 'model' role
+    for (const m of messages) {
+      const trimmed = m.content?.trim();
+      if (!trimmed || trimmed.startsWith('😿')) continue;
+
+      const role = m.role === 'assistant' ? 'model' : 'user';
+
+      // Merge consecutive messages with the same role
+      const prev = rawContents[rawContents.length - 1];
+      if (prev && prev.role === role) {
+        prev.parts[0].text += `\n\n${trimmed}`;
+      } else {
+        rawContents.push({
+          role,
+          parts: [{ text: trimmed }],
+        });
+      }
+    }
+
+    // Add current user message
+    const lastMsg = rawContents[rawContents.length - 1];
+    if (lastMsg && lastMsg.role === 'user') {
+      lastMsg.parts[0].text += `\n\n${userMessage.trim()}`;
+    } else {
+      rawContents.push({
+        role: 'user',
+        parts: [{ text: userMessage.trim() }],
+      });
+    }
 
     const response = await client.models.generateContent({
       model: DEFAULT_MODEL,
-      contents: formattedMessages,
+      contents: rawContents,
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
@@ -83,10 +105,11 @@ export async function generateChatResponse(systemPrompt: string, messages: Mochi
 
     return response.text ?? '';
   } catch (error: unknown) {
+    console.error('[Gemini Chat API Error]:', error);
     if (isAbortError(error)) {
       throw new Error('Mochi AI đang bận quá, bạn thử lại sau chút nhé! 🐱💤');
     }
-    throw new Error('GEMINI_ERROR: Failed to generate chat response');
+    throw error;
   } finally {
     cleanup();
   }

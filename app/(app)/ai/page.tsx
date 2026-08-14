@@ -79,7 +79,7 @@ export default function MochiAIPage() {
 
     try {
       const apiHistory = messages
-        .filter(m => m.id !== 'welcome')
+        .filter(m => m.id !== 'welcome' && !m.id.startsWith('error-') && !m.content.startsWith('😿'))
         .map(m => ({
           role: m.role,
           content: m.content,
