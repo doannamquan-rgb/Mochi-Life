@@ -102,7 +102,7 @@ Mở trình duyệt tại: `http://localhost:3000`
 1. Thêm các biến sau vào `.env.local`:
 ```env
 GEMINI_API_KEY=your_api_key_here
-GEMINI_MODEL=gemini-3.6-flash
+GEMINI_MODEL=gemini-3.7-flash
 MOCHI_AI_ENABLED=true
 ```
 2. Lấy API key miễn phí từ Google AI Studio.

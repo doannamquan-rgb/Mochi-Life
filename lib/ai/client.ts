@@ -17,7 +17,7 @@ export function isAIEnabled(): boolean {
   return process.env.MOCHI_AI_ENABLED === 'true' && !!process.env.GEMINI_API_KEY;
 }
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
 
 export async function generateChatResponse(systemPrompt: string, messages: MochiChatMessage[], userMessage: string): Promise<string> {
   const client = getGeminiClient();
