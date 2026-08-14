@@ -8,6 +8,9 @@ import { formatVND, formatTransactionAmount, FREQUENCY_LABELS } from '@/lib/form
 import { syncRecurringTransactions, calculateNextDueDate } from '@/lib/recurring-sync'
 import type { RecurringTransaction, ExpenseCategory, Wallet } from '@/lib/types'
 import { toast } from 'sonner'
+import { notifyDataChanged } from '@/lib/events'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback } from 'react'
 
 export default function RecurringTransactionsPage() {
   const { user } = useUser()
@@ -31,12 +34,7 @@ export default function RecurringTransactionsPage() {
     note: '',
   })
 
-  useEffect(() => {
-    if (!user) return
-    loadData()
-  }, [user])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
@@ -51,7 +49,14 @@ export default function RecurringTransactionsPage() {
     setCategories(catRes.data ?? [])
     setWallets(walRes.data ?? [])
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    loadData()
+  }, [user, loadData])
+
+  useDataChanged('expenses', loadData)
 
   async function handleRunSync() {
     if (!user) return
@@ -62,6 +67,7 @@ export default function RecurringTransactionsPage() {
     } else {
       toast.info('Không có giao dịch định kỳ nào đến hạn.')
     }
+    notifyDataChanged('expenses', 'recurring')
     await loadData()
     setSyncing(false)
   }
@@ -76,6 +82,7 @@ export default function RecurringTransactionsPage() {
       toast.error('Có lỗi xảy ra: ' + error.message)
     } else {
       toast.success(updatedStatus ? 'Đã tiếp tục giao dịch định kỳ!' : 'Đã tạm dừng giao dịch định kỳ!')
+      notifyDataChanged('expenses', 'recurring')
       loadData()
     }
   }
@@ -101,10 +108,11 @@ export default function RecurringTransactionsPage() {
     if (error) {
       toast.error('Lỗi khi tạo giao dịch: ' + error.message)
     } else {
-      const nextDate = calculateNextDueDate(new Date(item.next_due_date), item.frequency)
+      const nextDate = calculateNextDueDate(new Date(item.next_due_date), item.frequency, item.anchor_day, item.anchor_month)
       await supabase.from('recurring_transactions').update({ next_due_date: nextDate.toISOString().split('T')[0] }).eq('id', item.id)
 
       toast.success('Đã chạy ngay giao dịch thành công!')
+      notifyDataChanged('expenses', 'recurring')
       loadData()
     }
   }
@@ -117,6 +125,7 @@ export default function RecurringTransactionsPage() {
       toast.error('Lỗi khi xóa: ' + error.message)
     } else {
       toast.success('Đã xóa giao dịch định kỳ!')
+      notifyDataChanged('expenses', 'recurring')
       loadData()
     }
   }
@@ -131,7 +140,7 @@ export default function RecurringTransactionsPage() {
     const supabase = createClient()
     setLoading(true)
 
-    const payload = {
+    const payload: any = {
       user_id: user.id,
       type: form.type,
       amount: amt,
@@ -148,11 +157,15 @@ export default function RecurringTransactionsPage() {
       if (error) toast.error('Lỗi: ' + error.message)
       else toast.success('Đã cập nhật giao dịch định kỳ!')
     } else {
+      const initDate = new Date(form.next_due_date)
+      payload.anchor_day = initDate.getDate()
+      payload.anchor_month = initDate.getMonth() + 1
       const { error } = await supabase.from('recurring_transactions').insert(payload)
       if (error) toast.error('Lỗi: ' + error.message)
       else toast.success('Đã thêm giao dịch định kỳ mới!')
     }
 
+    notifyDataChanged('expenses', 'recurring')
     setShowModal(false)
     setLoading(false)
     loadData()

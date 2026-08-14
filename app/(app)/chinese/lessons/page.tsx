@@ -7,6 +7,9 @@ import { toast } from 'sonner'
 import { formatDate, todayString } from '@/lib/date-utils'
 import type { HskLesson, HskCourse } from '@/lib/types'
 import { LESSON_STATUS_LABELS } from '@/lib/format'
+import { notifyDataChanged } from '@/lib/events'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback } from 'react'
 
 const STATUS_COLORS = {
   not_started: '#D9C4A8',
@@ -55,6 +58,7 @@ function LessonForm({ onClose, onSaved, courses, existing }: {
       : await supabase.from('hsk_lessons').insert(payload)
     if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
     toast.success(existing ? 'Đã cập nhật bài học!' : 'Đã thêm bài học mới! 🎉')
+    notifyDataChanged('chinese', 'lesson')
     onSaved(); onClose()
   }
 
@@ -133,9 +137,7 @@ export default function LessonsPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [search, setSearch] = useState('')
 
-  useEffect(() => { if (user) loadData() }, [user])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
@@ -146,7 +148,11 @@ export default function LessonsPage() {
     setLessons(lessonsRes.data ?? [])
     setCourses(coursesRes.data ?? [])
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => { if (user) loadData() }, [user, loadData])
+
+  useDataChanged('chinese', loadData)
 
   async function updateStatus(lesson: HskLesson, newStatus: string) {
     const supabase = createClient()
@@ -155,6 +161,7 @@ export default function LessonsPage() {
     if ((newStatus === 'completed' || newStatus === 'mastered') && !lesson.completion_date) updates.completion_date = todayString()
     await supabase.from('hsk_lessons').update(updates).eq('id', lesson.id)
     toast.success('Đã cập nhật trạng thái!')
+    notifyDataChanged('chinese', 'lesson')
     loadData()
   }
 
@@ -163,6 +170,7 @@ export default function LessonsPage() {
     const supabase = createClient()
     await supabase.from('hsk_lessons').delete().eq('id', id)
     toast.success('Đã xóa')
+    notifyDataChanged('chinese', 'lesson')
     loadData()
   }
 

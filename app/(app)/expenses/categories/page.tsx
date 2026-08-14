@@ -6,6 +6,9 @@ import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
 import { formatVND, formatVNDCompact, getPercent } from '@/lib/format'
 import type { ExpenseCategory } from '@/lib/types'
+import { notifyDataChanged } from '@/lib/events'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback } from 'react'
 
 const DEFAULT_ICONS = ['🍜','🚌','🛍️','📚','💊','💄','🎮','🏠','📋','🎁','✈️','⭐','💰','🎉','💼','↩️','💡','🎵','🐾','🍕']
 
@@ -41,6 +44,7 @@ function CategoryForm({ onClose, onSaved, existing }: {
       : await supabase.from('expense_categories').insert(payload)
     if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
     toast.success(existing ? 'Đã cập nhật!' : 'Đã thêm danh mục mới! 🎉')
+    notifyDataChanged('expenses', 'category')
     onSaved(); onClose()
   }
 
@@ -99,9 +103,7 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<ExpenseCategory | undefined>()
   const [filter, setFilter] = useState<'all' | 'expense' | 'income'>('all')
 
-  useEffect(() => { if (user) loadData() }, [user])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
@@ -112,7 +114,11 @@ export default function CategoriesPage() {
       .order('sort_order')
     setCategories(data ?? [])
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => { if (user) loadData() }, [user, loadData])
+
+  useDataChanged('expenses', loadData)
 
   async function deleteCategory(cat: ExpenseCategory) {
     if (cat.is_default) { toast.error('Không thể xóa danh mục mặc định'); return }
@@ -121,6 +127,7 @@ export default function CategoriesPage() {
     const { error } = await supabase.from('expense_categories').delete().eq('id', cat.id)
     if (error) { toast.error('Lỗi: ' + error.message); return }
     toast.success('Đã xóa danh mục')
+    notifyDataChanged('expenses', 'category')
     loadData()
   }
 
@@ -146,6 +153,7 @@ export default function CategoriesPage() {
     )
     if (error) { toast.error('Lỗi: ' + error.message); return }
     toast.success('Đã khởi tạo danh mục mặc định!')
+    notifyDataChanged('expenses', 'category')
     loadData()
   }
 

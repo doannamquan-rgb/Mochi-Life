@@ -13,6 +13,9 @@ import { syncRecurringTransactions } from '@/lib/recurring-sync'
 import type { Transaction, ExpenseCategory, Wallet } from '@/lib/types'
 import { fetchAllRows } from '@/lib/supabase/fetchAllRows'
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { notifyDataChanged } from '@/lib/events'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback } from 'react'
 
 
 function TransactionForm({ onClose, onSaved, categories, wallets, existing }: {
@@ -79,11 +82,14 @@ function TransactionForm({ onClose, onSaved, categories, wallets, existing }: {
     toast.success(existing ? 'Đã cập nhật giao dịch thành công!' : `Đã lưu ${type === 'expense' ? 'khoản chi' : 'khoản thu'} thành công! 🎉`)
     // Fire Smart Reaction only on new transactions (not edits)
     if (!existing) {
+      const { awardXP } = await import('@/lib/gamification')
+      awardXP(user.id, 5, 'transaction_created', `tx:${type}_${date}_${amt}`)
       triggerReaction(
         type === 'expense' ? 'transaction_expense_created' : 'transaction_income_created',
         { dedupKey: `${type}_${date}_${Date.now()}`, delayMs: 400 }
       )
     }
+    notifyDataChanged('expenses', 'transaction')
     onSaved()
     onClose()
   }
@@ -233,34 +239,13 @@ function ExpensePageContent() {
     }
   }, [])
 
-  useEffect(() => {
-    if (user) loadData()
-  }, [user, selectedPeriod])
-
-  // Single-scroll into view when form opens & focus first input
-  useEffect(() => {
-    if (showForm && !hasScrolledRef.current) {
-      hasScrolledRef.current = true
-      requestAnimationFrame(() => {
-        const el = document.getElementById('transaction-form-card')
-        if (el) {
-          el.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
-          const firstInput = el.querySelector('#amount-input') as HTMLInputElement | null
-          if (firstInput) {
-            firstInput.focus({ preventScroll: true })
-          }
-        }
-      })
-    }
-  }, [showForm])
-
   function handleCloseForm() {
     setShowForm(false)
     setEditingTx(undefined)
     hasScrolledRef.current = false
   }
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     const requestId = ++requestIdRef.current
     setLoading(true)
@@ -326,7 +311,13 @@ function ExpensePageContent() {
     setWallets(walRes.data ?? [])
     setAppliedPeriod(selectedPeriod)
     setLoading(false)
-  }
+  }, [user, selectedPeriod])
+
+  useEffect(() => {
+    if (user) loadData()
+  }, [user, selectedPeriod, loadData])
+
+  useDataChanged('expenses', loadData)
 
 
   async function deleteTx(id: string) {
@@ -335,6 +326,7 @@ function ExpensePageContent() {
     const { error } = await supabase.from('transactions').delete().eq('id', id)
     if (error) { toast.error('Lỗi khi xóa: ' + error.message); return }
     toast.success('Đã xóa giao dịch thành công!')
+    notifyDataChanged('expenses', 'transaction')
     loadData()
   }
 

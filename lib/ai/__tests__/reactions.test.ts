@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildFallbackReaction } from '../reactions/fallback'
-import type { ReactionFacts } from '../reactions/types'
+import type { ReactionFacts, StudySessionReactionFacts, FinanceTransactionReactionFacts } from '../reactions/types'
 
 // ─── Fitness Exercise Fallback Tests ────────────────────────────────────────
 
@@ -127,7 +127,7 @@ describe('buildFallbackReaction - weight', () => {
 // ─── Study Fallback Tests ─────────────────────────────────────────────────────
 
 describe('buildFallbackReaction - study', () => {
-  const baseStudyFacts: Extract<ReactionFacts, { eventType: 'study_session_completed' }> = {
+  const baseStudyFacts: StudySessionReactionFacts = {
     eventType: 'study_session_completed',
     action: {
       newWordsCount: 10,
@@ -173,7 +173,7 @@ describe('buildFallbackReaction - study', () => {
   })
 
   it('handles review_session_completed event type', () => {
-    const facts: Extract<ReactionFacts, { eventType: 'review_session_completed' }> = {
+    const facts: StudySessionReactionFacts = {
       ...baseStudyFacts,
       eventType: 'review_session_completed',
     }
@@ -185,7 +185,7 @@ describe('buildFallbackReaction - study', () => {
 // ─── Finance Fallback Tests ───────────────────────────────────────────────────
 
 describe('buildFallbackReaction - finance', () => {
-  const baseExpenseFacts: Extract<ReactionFacts, { eventType: 'transaction_expense_created' }> = {
+  const baseExpenseFacts: FinanceTransactionReactionFacts = {
     eventType: 'transaction_expense_created',
     action: {
       amount: 150000,
@@ -232,7 +232,7 @@ describe('buildFallbackReaction - finance', () => {
   })
 
   it('generates celebrate tone for income', () => {
-    const incomeFacts: Extract<ReactionFacts, { eventType: 'transaction_income_created' }> = {
+    const incomeFacts: FinanceTransactionReactionFacts = {
       ...baseExpenseFacts,
       eventType: 'transaction_income_created',
       action: {

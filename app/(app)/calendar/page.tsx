@@ -18,6 +18,8 @@ import {
   subMonths,
 } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback } from 'react'
 
 type CalendarEvent = {
   id: string
@@ -36,12 +38,7 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
 
-  useEffect(() => {
-    if (!user) return
-    loadMonthEvents()
-  }, [user, currentMonth])
-
-  async function loadMonthEvents() {
+  const loadMonthEvents = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
@@ -134,7 +131,14 @@ export default function CalendarPage() {
 
     setEvents(evts)
     setLoading(false)
-  }
+  }, [user, currentMonth])
+
+  useEffect(() => {
+    if (!user) return
+    loadMonthEvents()
+  }, [user, currentMonth, loadMonthEvents])
+
+  useDataChanged('all', loadMonthEvents)
 
   // Grid dates calculations
   const monthStart = startOfMonth(currentMonth)

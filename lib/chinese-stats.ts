@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { HskCourse, HskLesson, HskVocabulary, StudySession, StudyGoal, VocabularyReview } from './types'
-import { todayString, CalendarPeriod } from './date-utils'
+import { todayString, toDbDate, CalendarPeriod } from './date-utils'
 import { fetchAllRows } from './supabase/fetchAllRows'
 
 export type ChineseStats = {
@@ -29,6 +29,41 @@ export type ChineseStats = {
   periodReviewedWordCount: number
   periodMinutes: number
   periodSessions: number
+}
+
+export function calculateStreak(sessionDates: string[]): number {
+  if (!sessionDates || sessionDates.length === 0) return 0
+  
+  const dateSet = new Set(sessionDates)
+  
+  // Use midday to avoid timezone issues when manipulating days
+  const d = new Date()
+  d.setHours(12, 0, 0, 0)
+  
+  const todayStr = todayString()
+  let currentStr = todayStr
+  
+  // If no session today, check yesterday
+  if (!dateSet.has(currentStr)) {
+    d.setDate(d.getDate() - 1)
+    currentStr = toDbDate(d)
+    if (!dateSet.has(currentStr)) {
+      return 0 // neither today nor yesterday
+    }
+  }
+
+  let streak = 0
+  while (true) {
+    if (dateSet.has(currentStr)) {
+      streak++
+      d.setDate(d.getDate() - 1)
+      currentStr = toDbDate(d)
+    } else {
+      break
+    }
+  }
+
+  return streak
 }
 
 function getPeriodBoundaries(period: CalendarPeriod): {
@@ -270,15 +305,7 @@ export async function fetchChineseStats(
     .limit(60)
 
   if (sessions) {
-    const dateSet = new Set((sessions as Array<{ session_date: string }>).map(x => x.session_date))
-    const d = new Date()
-    while (true) {
-      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      if (dateSet.has(ds)) {
-        streak++
-        d.setDate(d.getDate() - 1)
-      } else break
-    }
+    streak = calculateStreak((sessions as Array<{ session_date: string }>).map(x => x.session_date))
   }
 
   // Canonical calculations

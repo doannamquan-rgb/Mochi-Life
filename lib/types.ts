@@ -297,6 +297,8 @@ export type RecurringTransaction = {
   description: string
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
   next_due_date: string
+  anchor_day: number | null
+  anchor_month: number | null
   is_active: boolean
   note: string | null
   is_sample_data: boolean

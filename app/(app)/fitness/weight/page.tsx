@@ -99,6 +99,8 @@ function WeightForm({ onClose, onSaved, existing }: {
     notifyDataChanged('fitness', 'weight')
     // Fire Smart Reaction only on new logs (not edits)
     if (!existing) {
+      const { awardXP } = await import('@/lib/gamification')
+      awardXP(user.id, 10, 'weight_logged', `weight:${date}`)
       triggerReaction('weight_logged', { dedupKey: date, delayMs: 400 })
     }
     onSaved()

@@ -8,6 +8,10 @@ import { toast } from 'sonner'
 import { useMochiReaction } from '@/hooks/use-mochi-reaction'
 import { formatDate, todayString } from '@/lib/date-utils'
 import type { StudySession } from '@/lib/types'
+import { calculateStreak } from '@/lib/chinese-stats'
+import { notifyDataChanged } from '@/lib/events'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback } from 'react'
 
 function JournalForm({ onClose, onSaved, existing }: {
   onClose: () => void
@@ -49,8 +53,11 @@ function JournalForm({ onClose, onSaved, existing }: {
     toast.success(existing ? 'Đã cập nhật!' : 'Đã ghi buổi học! 🎉')
     // Fire Smart Reaction only on new sessions (not edits)
     if (!existing) {
+      const { awardXP } = await import('@/lib/gamification')
+      awardXP(user.id, 15, 'study_session', `study:${date}`)
       triggerReaction('study_session_completed', { dedupKey: date, delayMs: 400 })
     }
+    notifyDataChanged('chinese', 'journal')
     onSaved(); onClose()
   }
 
@@ -112,9 +119,9 @@ function JournalContent() {
   const [showForm, setShowForm] = useState(searchParams.get('action') === 'add')
   const [editing, setEditing] = useState<StudySession | undefined>()
 
-  useEffect(() => { if (user) loadData() }, [user])
 
-  async function loadData() {
+
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
@@ -126,13 +133,18 @@ function JournalContent() {
       .limit(60)
     setSessions(data ?? [])
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => { if (user) loadData() }, [user, loadData])
+  
+  useDataChanged('chinese', loadData)
 
   async function deleteSession(id: string) {
     if (!confirm('Xóa buổi học này?')) return
     const supabase = createClient()
     await supabase.from('study_sessions').delete().eq('id', id)
     toast.success('Đã xóa')
+    notifyDataChanged('chinese', 'journal')
     loadData()
   }
 
@@ -141,13 +153,7 @@ function JournalContent() {
   const totalDays = new Set(sessions.map(s => s.session_date)).size
 
   // Streak
-  let streak = 0
-  const dateSet = new Set(sessions.map(s => s.session_date))
-  const d = new Date()
-  while (true) {
-    const ds = d.toISOString().split('T')[0]
-    if (dateSet.has(ds)) { streak++; d.setDate(d.getDate() - 1) } else break
-  }
+  const streak = calculateStreak(sessions.map(s => s.session_date))
 
   return (
     <div className="page">

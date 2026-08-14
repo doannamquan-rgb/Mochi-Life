@@ -107,6 +107,8 @@ export default function ReviewPage() {
       }, { onConflict: 'user_id,session_date' })
       // Fire Smart Reaction for completed review session
       const todayDate = new Date().toISOString().split('T')[0]
+      const { awardXP } = await import('@/lib/gamification')
+      awardXP(user.id, 25, 'review_completed', `review:${todayDate}`)
       triggerReaction('review_session_completed', { dedupKey: todayDate, delayMs: 600 })
       setDone(true)
     } else {

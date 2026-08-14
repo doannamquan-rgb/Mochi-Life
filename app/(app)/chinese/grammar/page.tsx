@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
 import type { HskGrammar, HskLesson, GrammarStatus } from '@/lib/types'
+import { notifyDataChanged } from '@/lib/events'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback } from 'react'
 
 const STATUS_LABELS: Record<GrammarStatus, { label: string; color: string }> = {
   not_learned: { label: 'Chưa học', color: '#B8997A' },
@@ -57,6 +60,7 @@ function GrammarForm({ onClose, onSaved, lessons, existing }: {
       : await supabase.from('hsk_grammar').insert(payload)
     if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
     toast.success(existing ? 'Đã cập nhật ngữ pháp!' : 'Đã thêm cấu trúc ngữ pháp! 🎉')
+    notifyDataChanged('chinese', 'grammar')
     onSaved(); onClose()
   }
 
@@ -144,9 +148,7 @@ export default function GrammarPage() {
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  useEffect(() => { if (user) loadData() }, [user])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
@@ -157,7 +159,11 @@ export default function GrammarPage() {
     setGrammar(grammarRes.data ?? [])
     setLessons(lessonRes.data ?? [])
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => { if (user) loadData() }, [user, loadData])
+
+  useDataChanged('chinese', loadData)
 
   async function updateStatus(item: HskGrammar, newStatus: GrammarStatus) {
     const supabase = createClient()
@@ -167,6 +173,7 @@ export default function GrammarPage() {
     }
     await supabase.from('hsk_grammar').update(updates).eq('id', item.id)
     toast.success('Đã cập nhật trạng thái!')
+    notifyDataChanged('chinese', 'grammar')
     loadData()
   }
 
@@ -175,6 +182,7 @@ export default function GrammarPage() {
     const supabase = createClient()
     await supabase.from('hsk_grammar').delete().eq('id', id)
     toast.success('Đã xóa')
+    notifyDataChanged('chinese', 'grammar')
     loadData()
   }
 

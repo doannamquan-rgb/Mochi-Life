@@ -142,6 +142,8 @@ function ExerciseForm({ onClose, onSaved, existing }: {
     notifyDataChanged('fitness', 'exercise')
     // Fire Smart Reaction only on new logs (not edits)
     if (!existing) {
+      const { awardXP } = await import('@/lib/gamification')
+      awardXP(user.id, 20, 'exercise_logged', `exercise:${date}:${type}`)
       triggerReaction('exercise_logged', { dedupKey: date, delayMs: 400 })
     }
     onSaved()

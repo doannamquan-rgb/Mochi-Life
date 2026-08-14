@@ -6,6 +6,9 @@ import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
 import { formatVND, formatVNDCompact, getPercent } from '@/lib/format'
 import type { Budget, ExpenseCategory } from '@/lib/types'
+import { notifyDataChanged } from '@/lib/events'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback, useMemo } from 'react'
 
 export default function BudgetPage() {
   const { user } = useUser()
@@ -15,13 +18,11 @@ export default function BudgetPage() {
   const [showForm, setShowForm] = useState(false)
   const [editBudget, setEditBudget] = useState<Budget | undefined>()
 
-  const now = new Date()
+  const now = useMemo(() => new Date(), [])
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  useEffect(() => { if (user) loadData() }, [user])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
@@ -43,13 +44,18 @@ export default function BudgetPage() {
     setBudgets(bs)
     setCategories(catsRes.data ?? [])
     setLoading(false)
-  }
+  }, [user, month, year])
+
+  useEffect(() => { if (user) loadData() }, [user, loadData])
+
+  useDataChanged('expenses', loadData)
 
   async function deleteBudget(id: string) {
     if (!confirm('Xóa ngân sách này?')) return
     const supabase = createClient()
     await supabase.from('budgets').delete().eq('id', id)
     toast.success('Đã xóa ngân sách')
+    notifyDataChanged('expenses', 'budget')
     loadData()
   }
 
@@ -247,6 +253,7 @@ function BudgetForm({ onClose, onSaved, categories, existing, month, year }: {
       : await supabase.from('budgets').upsert(payload, { onConflict: 'user_id,category_id,month,year' })
     if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
     toast.success('Đã lưu ngân sách!')
+    notifyDataChanged('expenses', 'budget')
     onSaved(); onClose()
   }
 

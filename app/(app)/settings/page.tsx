@@ -29,9 +29,97 @@ export default function SettingsPage() {
     total_lessons: 15,
   })
 
-  // Sample data management state
+  // Backup & Restore State
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [exportLoading, setExportLoading] = useState(false)
+  const [restoreLoading, setRestoreLoading] = useState(false)
+  const [restoreValidation, setRestoreValidation] = useState<any | null>(null)
+  const [showRestoreModal, setShowRestoreModal] = useState(false)
+  const [restoreConfirmText, setRestoreConfirmText] = useState('')
+
+  async function exportData() {
+    if (!user) return
+    setExportLoading(true)
+    try {
+      const { generateFullBackup } = await import('@/lib/backup')
+      const backup = await generateFullBackup(user.id)
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mochi-life-backup-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Đã sao lưu toàn bộ dữ liệu (23 bảng) thành công! 🐱💾')
+    } catch (e: any) {
+      console.error('Export error:', e)
+      toast.error('Có lỗi khi xuất dữ liệu: ' + (e?.message || 'Không xác định'))
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      const { validateBackupData } = await import('@/lib/backup')
+      const validation = validateBackupData(json)
+
+      if (!validation.valid) {
+        toast.error(validation.error || 'File không hợp lệ!')
+        return
+      }
+
+      setRestoreValidation(validation)
+      setRestoreConfirmText('')
+      setShowRestoreModal(true)
+    } catch (err: any) {
+      toast.error('File không đúng định dạng JSON: ' + err.message)
+    } finally {
+      e.target.value = ''
+    }
+  }
+
+  async function handleExecuteRestore() {
+    if (!user || !restoreValidation?.parsed) return
+    if (restoreConfirmText !== 'KHOI PHUC') {
+      toast.error('Vui lòng nhập chính xác "KHOI PHUC" để xác nhận!')
+      return
+    }
+
+    setRestoreLoading(true)
+    try {
+      const res = await fetch('/api/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(restoreValidation.parsed),
+      })
+
+      const result = await res.json()
+
+      if (!res.ok || !result.success) {
+        toast.error(result.error || 'Khôi phục dữ liệu thất bại!')
+        return
+      }
+
+      const { notifyDataChanged } = await import('@/lib/events')
+      notifyDataChanged('all', 'restore')
+
+      toast.success('🎉 Khôi phục dữ liệu thành công! Đang tải lại...')
+      setShowRestoreModal(false)
+      setRestoreValidation(null)
+      loadCourses()
+      setTimeout(() => window.location.reload(), 1200)
+    } catch (err: any) {
+      toast.error('Lỗi kết nối khi khôi phục: ' + err.message)
+    } finally {
+      setRestoreLoading(false)
+    }
+  }
 
   // Initialize form once per authenticated user
   useEffect(() => {
@@ -209,58 +297,7 @@ export default function SettingsPage() {
     setLoading(false)
   }
 
-  async function exportData() {
-    if (!user) return
-    setExportLoading(true)
-    const supabase = createClient()
-    try {
-      const [profiles, wGoals, wLogs, exLogs, courses, vocab, grammar, sessions, txs, budgets, cats, wallets] = await Promise.all([
-        supabase.from('user_profiles').select('*').eq('user_id', user.id),
-        supabase.from('weight_goals').select('*').eq('user_id', user.id),
-        supabase.from('weight_logs').select('*').eq('user_id', user.id),
-        supabase.from('exercise_logs').select('*').eq('user_id', user.id),
-        supabase.from('hsk_courses').select('*').eq('user_id', user.id),
-        supabase.from('hsk_vocabulary').select('*').eq('user_id', user.id),
-        supabase.from('hsk_grammar').select('*').eq('user_id', user.id),
-        supabase.from('study_sessions').select('*').eq('user_id', user.id),
-        supabase.from('transactions').select('*').eq('user_id', user.id),
-        supabase.from('budgets').select('*').eq('user_id', user.id),
-        supabase.from('expense_categories').select('*').eq('user_id', user.id),
-        supabase.from('wallets').select('*').eq('user_id', user.id),
-      ])
-      const backup = {
-        exported_at: new Date().toISOString(),
-        version: '3.0.0',
-        user_id: user.id,
-        data: {
-          profile: profiles.data?.[0],
-          weight_goals: wGoals.data,
-          weight_logs: wLogs.data,
-          exercise_logs: exLogs.data,
-          hsk_courses: courses.data,
-          hsk_vocabulary: vocab.data,
-          hsk_grammar: grammar.data,
-          study_sessions: sessions.data,
-          transactions: txs.data,
-          budgets: budgets.data,
-          expense_categories: cats.data,
-          wallets: wallets.data,
-        }
-      }
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `mochi-backup-${new Date().toISOString().split('T')[0]}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast.success('Đã sao lưu dữ liệu thành công!')
-    } catch (e) {
-      toast.error('Có lỗi khi xuất dữ liệu')
-    } finally {
-      setExportLoading(false)
-    }
-  }
+
 
   async function handleDeleteSampleData() {
     if (!user) return
@@ -465,15 +502,37 @@ export default function SettingsPage() {
         <div className="settings-section">
           <div className="mochi-card" style={{ padding: 24 }}>
             <h2 className="section-title">💾 Sao lưu & Khôi phục</h2>
-            <div className="data-actions">
-              <div className="data-action-item">
+            <div className="data-actions" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="data-action-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
                 <div className="da-info">
-                  <div className="da-title">📥 Sao lưu dữ liệu</div>
-                  <div className="da-desc">Tải về file JSON chứa toàn bộ dữ liệu của bạn</div>
+                  <div className="da-title" style={{ fontWeight: 800, color: 'var(--chocolate-600)' }}>📥 Sao lưu toàn bộ dữ liệu</div>
+                  <div className="da-desc" style={{ fontSize: '0.85rem', color: 'var(--chocolate-400)' }}>Tải về file JSON chuẩn (23 bảng dữ liệu)</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--chocolate-300)', marginTop: 4 }}>
+                    ⚠️ Không bao gồm file ảnh đã tải lên storage (avatar, ảnh cân nặng, hóa đơn).
+                  </div>
                 </div>
                 <button className="mochi-btn mochi-btn-primary mochi-btn-sm" onClick={exportData} disabled={exportLoading}>
-                  {exportLoading ? 'Đang xuất...' : '📥 Tải về'}
+                  {exportLoading ? 'Đang xuất...' : '📥 Tải về JSON'}
                 </button>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--chocolate-100)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                <div className="da-info">
+                  <div className="da-title" style={{ fontWeight: 800, color: 'var(--chocolate-600)' }}>📤 Khôi phục từ file sao lưu</div>
+                  <div className="da-desc" style={{ fontSize: '0.85rem', color: 'var(--chocolate-400)' }}>Nạp lại toàn bộ dữ liệu từ file JSON sao lưu trước đó</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--peach-500)', marginTop: 4, fontWeight: 700 }}>
+                    ⚠️ Thao tác này sẽ thay thế toàn bộ dữ liệu hiện tại bằng dữ liệu trong file backup.
+                  </div>
+                </div>
+                <label className="mochi-btn mochi-btn-secondary mochi-btn-sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', margin: 0 }}>
+                  <span>📤 Chọn file JSON</span>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                  />
+                </label>
               </div>
             </div>
           </div>
@@ -515,7 +574,7 @@ export default function SettingsPage() {
             <span className="animate-float" style={{ fontSize: '3.5rem' }}>🐱</span>
             <h2 className="about-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--chocolate-600)', margin: 0 }}>Mochi Life</h2>
             <div style={{ background: 'var(--lavender-100)', color: 'var(--lavender-600)', padding: '4px 14px', borderRadius: 999, fontWeight: 800, fontSize: '0.85rem' }}>
-              Phiên bản 4.0.0
+              Phiên bản 4.5.0
             </div>
             <p className="about-desc" style={{ fontSize: '0.9rem', color: 'var(--chocolate-400)', fontWeight: 600, maxWidth: 500, margin: 0 }}>
               Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi giảm cân, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.
@@ -688,6 +747,90 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Restore Confirmation Modal */}
+      {showRestoreModal && restoreValidation && (
+        <div className="modal-overlay" onClick={() => !restoreLoading && setShowRestoreModal(false)}>
+          <div className="modal-content animate-bounce-in" onClick={e => e.stopPropagation()} style={{ maxWidth: 540 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: '1.8rem' }}>⚠️</span>
+              <h2 style={{ margin: 0, color: 'var(--peach-600)', fontSize: '1.25rem', fontWeight: 800 }}>
+                Xác nhận khôi phục dữ liệu
+              </h2>
+            </div>
+
+            <p style={{ fontSize: '0.875rem', color: 'var(--chocolate-500)', lineHeight: 1.5, margin: '0 0 16px' }}>
+              Bản sao lưu chứa <strong>{restoreValidation.totalRecords}</strong> bản ghi.
+              Khôi phục sẽ <strong>thay thế toàn bộ dữ liệu hiện tại</strong> của bạn bằng dữ liệu từ file này.
+            </p>
+
+            {restoreValidation.summary && (
+              <div style={{
+                background: 'var(--cream)',
+                borderRadius: 14,
+                padding: '12px 16px',
+                maxHeight: 180,
+                overflowY: 'auto',
+                fontSize: '0.8rem',
+                border: '1px solid var(--chocolate-100)',
+                marginBottom: 16,
+              }}>
+                <div style={{ fontWeight: 800, color: 'var(--chocolate-600)', marginBottom: 6 }}>
+                  📋 Chi tiết các bảng dữ liệu:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
+                  {Object.entries(restoreValidation.summary).map(([tbl, cnt]) => (
+                    <div key={tbl} style={{ color: 'var(--chocolate-500)' }}>
+                      • <strong>{tbl}</strong>: {cnt as number}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{
+              background: '#FFF0F0',
+              borderRadius: 14,
+              padding: '12px 16px',
+              border: '1.5px solid #FFD0D0',
+              marginBottom: 16,
+            }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#D32F2F', marginBottom: 6 }}>
+                Để tiếp tục, vui lòng nhập chính xác &quot;KHOI PHUC&quot;:
+              </div>
+              <input
+                type="text"
+                className="mochi-input"
+                placeholder='Nhập "KHOI PHUC"'
+                value={restoreConfirmText}
+                onChange={e => setRestoreConfirmText(e.target.value)}
+                disabled={restoreLoading}
+                style={{ borderColor: '#FFB0B0', background: 'white' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button
+                type="button"
+                className="mochi-btn mochi-btn-secondary"
+                onClick={() => setShowRestoreModal(false)}
+                disabled={restoreLoading}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                className="mochi-btn mochi-btn-danger"
+                onClick={handleExecuteRestore}
+                disabled={restoreConfirmText !== 'KHOI PHUC' || restoreLoading}
+              >
+                {restoreLoading ? 'Đang khôi phục...' : '💥 Xác nhận khôi phục'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       <style jsx>{`
         .page { max-width: 750px; margin: 0 auto; padding-bottom: 32px; display: flex; flex-direction: column; gap: 20px; }

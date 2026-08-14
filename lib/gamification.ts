@@ -25,13 +25,23 @@ export async function checkAndAwardAchievements(userId: string) {
 
 export async function awardXP(userId: string, amount: number, actionType: string, refId?: string) {
   const supabase = createClient()
+  const safeAmount = Math.max(1, Math.min(100, Math.round(amount)))
+
   try {
-    await supabase.from('user_xp_logs').insert({
-      user_id: userId,
-      amount,
-      action_type: actionType,
-      reference_id: refId || null,
-    })
+    const { data, error } = await supabase
+      .from('user_xp_logs')
+      .insert({
+        user_id: userId,
+        amount: safeAmount,
+        action_type: actionType,
+        reference_id: refId || null,
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      toast.success(`✨ +${safeAmount} XP!`, { duration: 2000 })
+    }
 
     // Check achievements automatically after earning XP
     await checkAndAwardAchievements(userId)
@@ -42,16 +52,17 @@ export async function awardXP(userId: string, amount: number, actionType: string
 
 export function calculateLevelFromXP(totalXP: number) {
   // Level formula: Level = Math.floor(Math.sqrt(totalXP / 50)) + 1
-  const level = Math.floor(Math.sqrt(totalXP / 50)) + 1
+  const safeXP = Math.max(0, totalXP)
+  const level = Math.floor(Math.sqrt(safeXP / 50)) + 1
   const xpForCurrentLevel = Math.pow(level - 1, 2) * 50
   const xpForNextLevel = Math.pow(level, 2) * 50
-  const currentProgressXP = totalXP - xpForCurrentLevel
+  const currentProgressXP = safeXP - xpForCurrentLevel
   const neededXPForNextLevel = xpForNextLevel - xpForCurrentLevel
   const progressPct = neededXPForNextLevel > 0 ? Math.min(100, Math.round((currentProgressXP / neededXPForNextLevel) * 100)) : 100
 
   return {
     level,
-    totalXP,
+    totalXP: safeXP,
     xpForCurrentLevel,
     xpForNextLevel,
     currentProgressXP,

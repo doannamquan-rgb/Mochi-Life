@@ -7,6 +7,9 @@ import { toast } from 'sonner'
 import { todayString } from '@/lib/date-utils'
 import type { WeightGoal, FitnessGoal } from '@/lib/types'
 import { formatWeight, calculateBMI, formatBMI, getBMICategory } from '@/lib/format'
+import { notifyDataChanged } from '@/lib/events'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { useCallback } from 'react'
 
 export default function FitnessGoalsPage() {
   const { user, profile } = useUser()
@@ -28,9 +31,7 @@ export default function FitnessGoalsPage() {
   const [weeklyCalories, setWeeklyCalories] = useState('1000')
   const [dailySteps, setDailySteps] = useState('8000')
 
-  useEffect(() => { if (user) loadData() }, [user])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!user) return
     setLoading(true)
     const supabase = createClient()
@@ -54,7 +55,11 @@ export default function FitnessGoalsPage() {
       setDailySteps(fg.data.daily_steps.toString())
     }
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => { if (user) loadData() }, [user, loadData])
+
+  useDataChanged('fitness', loadData)
 
   async function saveWeightGoal(e: React.FormEvent) {
     e.preventDefault()
@@ -77,6 +82,7 @@ export default function FitnessGoalsPage() {
       : await supabase.from('weight_goals').insert(payload)
     if (error) { toast.error('Lỗi: ' + error.message); setSaving(false); return }
     toast.success('Đã lưu mục tiêu cân nặng! 🎯')
+    notifyDataChanged('fitness', 'goals')
     loadData()
     setSaving(false)
   }
@@ -98,6 +104,7 @@ export default function FitnessGoalsPage() {
       : await supabase.from('fitness_goals').insert(payload)
     if (error) { toast.error('Lỗi: ' + error.message); setSaving(false); return }
     toast.success('Đã lưu mục tiêu tập luyện! 💪')
+    notifyDataChanged('fitness', 'goals')
     loadData()
     setSaving(false)
   }

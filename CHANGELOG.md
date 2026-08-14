@@ -4,6 +4,36 @@ Tất cả các thay đổi và tính năng mới của dự án **Mochi Life** 
 
 ---
 
+## 🚀 [v4.5.0] - 2026-08-14
+
+### 🛡️ Nâng cấp Bảo mật, Tính ổn định Toàn diện & Hệ thống Sao lưu Khôi phục (Enterprise Reliability & Security)
+
+#### 1. 🛡️ Bảo mật Hệ thống & API
+- **SSRF Protection Đa tầng (`/api/import/url`)**: Thêm xác thực người dùng server-side, vòng lặp xử lý manual redirect tối đa 5 hops có xác thực DNS/IP tại từng chặng, chặn toàn bộ dải IP private/loopback/link-local/IPv4-mapped-IPv6/AWS metadata và giới hạn kích thước stream 5MB.
+- **Bảo mật Hàm RPC (`008_security_hardening_rpc.sql`)**: Bổ sung `auth.uid()` guard cho `check_and_unlock_achievements`, thu hồi quyền execute từ `public/anon`, chỉ cấp phép cho `authenticated`.
+- **Toàn vẹn Dữ liệu XP (`009_xp_idempotency_and_integrity.sql`)**: Ràng buộc `CHECK (amount > 0 AND amount <= 100)` và Unique Partial Index chống trùng lặp ghi nhận XP.
+
+#### 2. 🐱 Trợ lý Mochi AI — Timeout & Cancellation Native
+- **Tối ưu SDK Gemini (`lib/ai/client.ts`)**: Sử dụng native `abortSignal` và `httpOptions.timeout` từ `@google/genai` v2.16.0, tự dọn dẹp timer và trả về thông điệp dễ thương khi timeout.
+
+#### 3. 💰 Giao dịch định kỳ & Chuỗi ngày học
+- **Chống trôi ngày giao dịch định kỳ (`010_recurring_anchor.sql`, `lib/recurring-sync.ts`)**: Bổ sung `anchor_day` và `anchor_month` kèm thuật toán bù ngày neo thông minh (Jan 31 → Feb 28 → Mar 31). Không làm nhảy ngày nếu gặp lỗi insert ngoại trừ mã `23505`.
+- **Chuỗi học liên tục (Streak) Chuẩn xác (`lib/chinese-stats.ts`)**: Viết hàm canonical `calculateStreak` bảo lưu streak nếu hôm nay chưa kịp học nhưng hôm qua có học, đồng bộ theo múi giờ Việt Nam.
+
+#### 4. 💾 Sao lưu & Khôi phục Dữ liệu Toàn diện (Backup & Transactional Restore)
+- **Sao lưu 23 bảng (`lib/backup.ts`)**: Xuất toàn bộ dữ liệu người dùng ra JSON chuẩn hóa với phân trang `fetchAllRows` vượt giới hạn 1.000 dòng.
+- **Khôi phục Transactional (`011_transactional_restore_rpc.sql`, `/api/restore`, `settings/page.tsx`)**: Khôi phục dữ liệu nguyên tử phía database, ghi đè `user_id` an toàn, map thành tích theo code và hộp thoại xác nhận yêu cầu nhập `"KHOI PHUC"`.
+
+#### 5. 🔄 Custom Events & Gamification
+- Đồng bộ dữ liệu realtime qua `notifyDataChanged` / `useDataChanged` trên 100% các trang CRUD và Lịch biểu.
+- Tự động tích lũy XP (+5 đến +25 XP) cho 5 hoạt động người dùng.
+
+#### 6. 🧪 Kiểm thử & Chất lượng Code
+- Cấu hình ESLint Flat Config (`eslint.config.mjs`) chuẩn Next.js 16.
+- Bổ sung 6 bộ unit test mới: **78 tests pass / 11 test suites**.
+
+---
+
 ## 🚀 [v4.0.0] - 2026-08-10
 
 ### 🌟 Mochi AI Coach — Personal Life Assistant 🐱

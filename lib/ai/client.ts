@@ -19,14 +19,45 @@ export function isAIEnabled(): boolean {
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
 
+// ─── Timeout Constants ────────────────────────────────────────────────────────
+const CHAT_TIMEOUT_MS = 30000;
+const DAILY_BRIEF_TIMEOUT_MS = 30000;
+const REACTION_TIMEOUT_MS = 20000;
+
+/**
+ * Creates an AbortController + setTimeout pair that properly cleans up.
+ * Uses native @google/genai abortSignal support (v2.16.0+).
+ * Returns { signal, cleanup } — caller MUST call cleanup() in finally block.
+ */
+function createTimeoutAbort(timeoutMs: number): {
+  signal: AbortSignal;
+  cleanup: () => void;
+} {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    cleanup: () => clearTimeout(timeoutId),
+  };
+}
+
+/**
+ * Checks if an error is a timeout/abort error from the SDK or AbortController.
+ */
+function isAbortError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.name === 'AbortError' || error.message.includes('aborted') || error.message.includes('abort');
+  }
+  return false;
+}
+
 export async function generateChatResponse(systemPrompt: string, messages: MochiChatMessage[], userMessage: string): Promise<string> {
   const client = getGeminiClient();
   if (!client || !isAIEnabled()) {
     throw new Error('AI is disabled or no API key provided');
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const { signal, cleanup } = createTimeoutAbort(CHAT_TIMEOUT_MS);
 
   try {
     const formattedMessages = messages.map(m => ({
@@ -45,17 +76,19 @@ export async function generateChatResponse(systemPrompt: string, messages: Mochi
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
+        abortSignal: signal,
+        httpOptions: { timeout: CHAT_TIMEOUT_MS },
       },
     });
 
     return response.text ?? '';
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      throw new Error('Timeout while generating chat response');
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      throw new Error('Mochi AI đang bận quá, bạn thử lại sau chút nhé! 🐱💤');
     }
     throw new Error('GEMINI_ERROR: Failed to generate chat response');
   } finally {
-    clearTimeout(timeout);
+    cleanup();
   }
 }
 
@@ -65,8 +98,7 @@ export async function generateDailyBriefResponse(systemPrompt: string, context: 
     throw new Error('AI is disabled or no API key provided');
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const { signal, cleanup } = createTimeoutAbort(DAILY_BRIEF_TIMEOUT_MS);
 
   try {
     const response = await client.models.generateContent({
@@ -76,17 +108,19 @@ export async function generateDailyBriefResponse(systemPrompt: string, context: 
         systemInstruction: systemPrompt,
         temperature: 0.3,
         responseMimeType: 'application/json',
+        abortSignal: signal,
+        httpOptions: { timeout: DAILY_BRIEF_TIMEOUT_MS },
       }
     });
 
     return response.text ?? '';
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      throw new Error('Timeout while generating daily brief response');
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      throw new Error('Mochi AI đang bận quá, bạn thử lại sau chút nhé! 🐱💤');
     }
     throw new Error('GEMINI_ERROR: Failed to generate daily brief');
   } finally {
-    clearTimeout(timeout);
+    cleanup();
   }
 }
 
@@ -96,8 +130,7 @@ export async function generateReactionResponse(systemPrompt: string, context: st
     throw new Error('AI is disabled or no API key provided');
   }
 
-  // 20s timeout — shorter than chat since this is a background post-action call
-  const timeout = setTimeout(() => { /* no-op — no AbortController for now */ }, 20000);
+  const { signal, cleanup } = createTimeoutAbort(REACTION_TIMEOUT_MS);
 
   try {
     const response = await client.models.generateContent({
@@ -107,13 +140,18 @@ export async function generateReactionResponse(systemPrompt: string, context: st
         systemInstruction: systemPrompt,
         temperature: 0.6,
         responseMimeType: 'application/json',
+        abortSignal: signal,
+        httpOptions: { timeout: REACTION_TIMEOUT_MS },
       }
     });
 
     return response.text ?? '';
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      throw new Error('Mochi AI đang bận quá, bạn thử lại sau chút nhé! 🐱💤');
+    }
     throw new Error('GEMINI_ERROR: Failed to generate reaction');
   } finally {
-    clearTimeout(timeout);
+    cleanup();
   }
 }
