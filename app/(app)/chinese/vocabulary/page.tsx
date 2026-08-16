@@ -154,6 +154,11 @@ function VocabForm({ onClose, onSaved, lessons, activeCourseId, existing }: {
       return
     }
 
+    if (isLearned) {
+      const { awardXP } = await import('@/lib/gamification')
+      awardXP(user.id, 5, 'vocab_learned', `vocab:${existing?.id || hanzi.trim()}`)
+    }
+
     toast.success(existing ? 'Đã cập nhật từ vựng thành công!' : `Đã thêm từ vựng "${hanzi}" thành công! 🎉`)
     notifyDataChanged('chinese', 'vocabulary', payload.course_id ?? undefined)
     onSaved()

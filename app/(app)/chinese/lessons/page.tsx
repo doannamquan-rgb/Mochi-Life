@@ -160,6 +160,10 @@ export default function LessonsPage() {
     if (newStatus === 'in_progress' && !lesson.start_date) updates.start_date = todayString()
     if ((newStatus === 'completed' || newStatus === 'mastered') && !lesson.completion_date) updates.completion_date = todayString()
     await supabase.from('hsk_lessons').update(updates).eq('id', lesson.id)
+    if (user && (newStatus === 'completed' || newStatus === 'mastered')) {
+      const { awardXP } = await import('@/lib/gamification')
+      awardXP(user.id, 20, 'lesson_completed', `lesson:${lesson.id}`)
+    }
     toast.success('Đã cập nhật trạng thái!')
     notifyDataChanged('chinese', 'lesson')
     loadData()

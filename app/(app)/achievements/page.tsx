@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
-import { calculateLevelFromXP } from '@/lib/gamification'
+import { useDataChanged } from '@/hooks/use-data-changed'
+import { calculateLevelFromXP, checkAndAwardAchievements, MASTER_ACHIEVEMENTS } from '@/lib/gamification'
+import { toast } from 'sonner'
 import type { Achievement, UserAchievement } from '@/lib/types'
 
 const CAT_LABELS: Record<string, { label: string; color: string }> = {
@@ -16,41 +18,98 @@ const CAT_LABELS: Record<string, { label: string; color: string }> = {
 export default function AchievementsPage() {
   const { user } = useUser()
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [unlockedMap, setUnlockedMap] = useState<Map<string, string>>(new Map())
   const [totalXP, setTotalXP] = useState(0)
   const [selectedCat, setSelectedCat] = useState<string>('all')
 
-  useEffect(() => {
+  const loadData = useCallback(async (isManual = false) => {
     if (!user) return
-    loadData()
-  }, [user])
+    if (isManual) setRefreshing(true)
+    else setLoading(true)
 
-  async function loadData() {
-    if (!user) return
-    setLoading(true)
     const supabase = createClient()
 
-    const [achRes, userAchRes, xpRes] = await Promise.all([
-      supabase.from('achievements').select('*').order('created_at'),
-      supabase.from('user_achievements').select('*').eq('user_id', user.id),
-      supabase.from('user_xp_logs').select('amount').eq('user_id', user.id),
-    ])
+    try {
+      // 1. Trigger comprehensive achievement evaluation
+      const newlyUnlocked = await checkAndAwardAchievements(user.id)
 
-    const allAchievements = achRes.data ?? []
-    const userUnlocked = userAchRes.data ?? []
-    const uMap = new Map<string, string>()
-    userUnlocked.forEach((u: UserAchievement) => {
-      uMap.set(u.achievement_id, u.unlocked_at)
-    })
+      // 2. Fetch master achievements, unlocked records, and XP logs
+      const [achRes, userAchRes, xpRes] = await Promise.all([
+        supabase.from('achievements').select('*').order('created_at'),
+        supabase.from('user_achievements').select('*').eq('user_id', user.id),
+        supabase.from('user_xp_logs').select('amount').eq('user_id', user.id),
+      ])
 
-    const sumXP = (xpRes.data ?? []).reduce((sum: number, item: { amount: number }) => sum + item.amount, 0)
+      let allAchievements = achRes.data ?? []
 
-    setAchievements(allAchievements)
-    setUnlockedMap(uMap)
-    setTotalXP(sumXP)
-    setLoading(false)
-  }
+      // Fallback: If master achievements table is empty in database, attempt to seed or load from MASTER_ACHIEVEMENTS
+      if (allAchievements.length === 0) {
+        const { data: seeded } = await supabase.from('achievements').insert(MASTER_ACHIEVEMENTS).select()
+        if (seeded && seeded.length > 0) {
+          allAchievements = seeded
+        } else {
+          allAchievements = MASTER_ACHIEVEMENTS.map((m, idx) => ({
+            id: `virtual-${m.code || idx}`,
+            ...m,
+            created_at: new Date().toISOString(),
+          }))
+        }
+      }
+
+      const userUnlocked = userAchRes.data ?? []
+      const uMap = new Map<string, string>()
+      userUnlocked.forEach((u: UserAchievement) => {
+        uMap.set(u.achievement_id, u.unlocked_at)
+      })
+
+      let sumXP = (xpRes.data ?? []).reduce((sum: number, item: { amount: number }) => sum + item.amount, 0)
+
+      // Backfill baseline XP if user has achievements unlocked but no XP logs yet
+      if (sumXP === 0 && userUnlocked.length > 0) {
+        const baseXP = userUnlocked.length * 20
+        await supabase.from('user_xp_logs').insert({
+          user_id: user.id,
+          amount: baseXP,
+          action_type: 'achievement_sync',
+          reference_id: 'init:achievements',
+        })
+        sumXP = baseXP
+      }
+
+      setAchievements(allAchievements)
+      setUnlockedMap(uMap)
+      setTotalXP(sumXP)
+
+      if (isManual) {
+        if (newlyUnlocked > 0) {
+          toast.success(`🎉 Đã mở khóa thêm ${newlyUnlocked} thành tích mới!`)
+        } else {
+          toast.success('✨ Dữ liệu thành tích đã được cập nhật mới nhất!')
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to load achievements:', err)
+      if (isManual) {
+        toast.error('Có lỗi khi làm mới dữ liệu thành tích')
+      }
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      loadData()
+    }
+  }, [user, loadData])
+
+  // Listen for realtime data changes across the app
+  useDataChanged('all', () => {
+    loadData(false)
+  })
 
   const levelInfo = calculateLevelFromXP(totalXP)
 
@@ -61,14 +120,13 @@ export default function AchievementsPage() {
 
   const unlockedCount = achievements.filter(a => unlockedMap.has(a.id)).length
   const totalCount = achievements.length
-  const unlockedPct = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0
 
   if (loading) {
     return (
       <div className="page">
         <div className="mochi-skeleton" style={{ height: 160, borderRadius: 24 }} />
         <div className="achievements-grid">
-          {[1,2,3,4,5,6].map(i => (
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="mochi-skeleton" style={{ height: 140, borderRadius: 20 }} />
           ))}
         </div>
@@ -83,6 +141,14 @@ export default function AchievementsPage() {
           <h1 className="page-title">🏆 Thành tích & Cấp độ</h1>
           <p className="page-subtitle">{unlockedCount}/{totalCount} thành tích đã mở khóa · Cấp độ {levelInfo.level}</p>
         </div>
+        <button
+          type="button"
+          className="mochi-btn mochi-btn-secondary mochi-btn-sm sync-btn"
+          onClick={() => loadData(true)}
+          disabled={refreshing}
+        >
+          {refreshing ? '⏳ Đang kiểm tra...' : '🔄 Kiểm tra & Cập nhật'}
+        </button>
       </div>
 
       {/* Level & XP Banner */}
@@ -139,9 +205,9 @@ export default function AchievementsPage() {
               <span className="achievement-cat" style={{ background: `${catInfo.color}20`, color: catInfo.color }}>
                 {catInfo.label}
               </span>
-              {isUnlocked && unlockedTime && (
+              {isUnlocked && (
                 <span className="unlocked-time">
-                  Đạt được: {new Date(unlockedTime).toLocaleDateString('vi-VN')}
+                  {unlockedTime ? `Đạt được: ${new Date(unlockedTime).toLocaleDateString('vi-VN')}` : 'Đã hoàn thành ✨'}
                 </span>
               )}
             </div>
@@ -156,11 +222,12 @@ export default function AchievementsPage() {
 
       <style jsx>{`
         .page { max-width: 900px; margin: 0 auto; padding-bottom: 32px; display: flex; flex-direction: column; gap: 16px; }
-        .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
         .page-title { font-size: 1.4rem; font-weight: 800; color: var(--chocolate-600); margin: 0 0 4px; }
         .page-subtitle { font-size: 0.875rem; color: var(--chocolate-400); font-weight: 600; margin: 0; }
+        .sync-btn { border-radius: 14px; font-weight: 700; }
         .hero-banner { background: white; border-radius: 24px; padding: 20px; box-shadow: var(--shadow-sm); border: 1.5px solid var(--chocolate-100); display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-        .level-badge-large { background: linear-gradient(135deg, #FFCA1A, #FF9A80); padding: 16px 24px; border-radius: 20px; color: var(--chocolate-700); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .level-badge-large { background: linear-gradient(135deg, #FFCA1A, #FF9A80); padding: 16px 24px; border-radius: 20px; color: var(--chocolate-700); display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; }
         .level-num { font-size: 1.3rem; font-weight: 800; }
         .xp-total { font-size: 0.8rem; font-weight: 700; opacity: 0.9; }
         .level-details { flex: 1; min-width: 240px; }

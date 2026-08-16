@@ -59,6 +59,10 @@ function GrammarForm({ onClose, onSaved, lessons, existing }: {
       ? await supabase.from('hsk_grammar').update(payload).eq('id', existing.id)
       : await supabase.from('hsk_grammar').insert(payload)
     if (error) { toast.error('Lỗi: ' + error.message); setLoading(false); return }
+    if (status === 'learned' || status === 'mastered') {
+      const { awardXP } = await import('@/lib/gamification')
+      awardXP(user.id, 10, 'grammar_learned', `grammar:${existing?.id || structureName.trim()}`)
+    }
     toast.success(existing ? 'Đã cập nhật ngữ pháp!' : 'Đã thêm cấu trúc ngữ pháp! 🎉')
     notifyDataChanged('chinese', 'grammar')
     onSaved(); onClose()

@@ -48,4 +48,18 @@ describe('calculateLevelFromXP', () => {
     const res = calculateLevelFromXP(49)
     expect(res.progressPct).toBeLessThanOrEqual(100)
   })
+
+  it('contains valid master achievements with required metadata', async () => {
+    const { MASTER_ACHIEVEMENTS } = await import('../gamification')
+    expect(MASTER_ACHIEVEMENTS.length).toBeGreaterThanOrEqual(25)
+    for (const ach of MASTER_ACHIEVEMENTS) {
+      expect(ach.code).toBeDefined()
+      expect(ach.name).toBeDefined()
+      expect(ach.icon).toBeDefined()
+      expect(ach.category).toBeDefined()
+      expect(ach.condition_type).toBeDefined()
+      expect(ach.condition_value).toBeGreaterThan(0)
+    }
+  })
 })
+
