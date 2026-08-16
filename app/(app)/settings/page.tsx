@@ -14,8 +14,10 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState('')
   const [height, setHeight] = useState('')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [defaultThinkingMode, setDefaultThinkingMode] = useState<'fast' | 'balanced' | 'deep'>('balanced')
   const [initUserId, setInitUserId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('profile')
+
 
   // Course Management State
   const [courses, setCourses] = useState<HskCourse[]>([])
@@ -128,9 +130,22 @@ export default function SettingsPage() {
       setHeight(profile.height_cm?.toString() ?? '')
       const activeTheme = (localStorage.getItem('mochi-theme') as 'light' | 'dark') || profile.theme || 'light'
       setTheme(activeTheme)
+      const activeAiMode = (localStorage.getItem('mochi-ai-thinking-mode') as 'fast' | 'balanced' | 'deep') || 'balanced'
+      setDefaultThinkingMode(activeAiMode)
       setInitUserId(user.id)
     }
   }, [user, profile, initUserId])
+
+  function handleThinkingModeChange(mode: 'fast' | 'balanced' | 'deep') {
+    setDefaultThinkingMode(mode)
+    localStorage.setItem('mochi-ai-thinking-mode', mode)
+    const labels = {
+      fast: '⚡ Đã đặt chế độ Siêu tốc (Fast) làm mặc định',
+      balanced: '⚖️ Đã đặt chế độ Cân bằng (Balanced) làm mặc định',
+      deep: '🧠 Đã đặt chế độ Suy luận sâu (Deep Reasoning) làm mặc định',
+    }
+    toast.success(labels[mode])
+  }
 
   useEffect(() => {
     if (user) {
@@ -399,6 +414,40 @@ export default function SettingsPage() {
                 <input type="number" className="mochi-input" placeholder="160" value={height} onChange={e => setHeight(e.target.value)} />
               </div>
               <div className="form-group">
+                <label className="mochi-label">Chế độ AI Thinking mặc định (Gemini 3.7 Flash)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                  <button
+                    type="button"
+                    className={`mochi-btn ${defaultThinkingMode === 'fast' ? 'mochi-btn-primary' : 'mochi-btn-secondary'}`}
+                    onClick={() => handleThinkingModeChange('fast')}
+                    style={{ fontSize: '0.85rem', padding: '10px 12px' }}
+                  >
+                    ⚡ Siêu tốc
+                  </button>
+                  <button
+                    type="button"
+                    className={`mochi-btn ${defaultThinkingMode === 'balanced' ? 'mochi-btn-primary' : 'mochi-btn-secondary'}`}
+                    onClick={() => handleThinkingModeChange('balanced')}
+                    style={{ fontSize: '0.85rem', padding: '10px 12px' }}
+                  >
+                    ⚖️ Cân bằng
+                  </button>
+                  <button
+                    type="button"
+                    className={`mochi-btn ${defaultThinkingMode === 'deep' ? 'mochi-btn-primary' : 'mochi-btn-secondary'}`}
+                    onClick={() => handleThinkingModeChange('deep')}
+                    style={{ fontSize: '0.85rem', padding: '10px 12px' }}
+                  >
+                    🧠 Suy luận sâu
+                  </button>
+                </div>
+                <span className="field-hint">
+                  {defaultThinkingMode === 'fast' && '⚡ Tắt suy nghĩ, phản hồi siêu tốc với độ trễ thấp nhất.'}
+                  {defaultThinkingMode === 'balanced' && '⚖️ Gemini tự động cân bằng giữa thời gian suy nghĩ và logic (Mặc định).'}
+                  {defaultThinkingMode === 'deep' && '🧠 Cho phép AI suy nghĩ & đối chiếu dữ liệu nhiều bước trước khi trả lời.'}
+                </span>
+              </div>
+              <div className="form-group">
                 <label className="mochi-label">Email</label>
                 <input type="email" className="mochi-input" value={user?.email ?? ''} disabled />
                 <span className="field-hint">Email không thể thay đổi</span>
@@ -574,7 +623,7 @@ export default function SettingsPage() {
             <span className="animate-float" style={{ fontSize: '3.5rem' }}>🐱</span>
             <h2 className="about-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--chocolate-600)', margin: 0 }}>Mochi Life</h2>
             <div style={{ background: 'var(--lavender-100)', color: 'var(--lavender-600)', padding: '4px 14px', borderRadius: 999, fontWeight: 800, fontSize: '0.85rem' }}>
-              Phiên bản 4.5.0
+              Phiên bản 4.6.0
             </div>
             <p className="about-desc" style={{ fontSize: '0.9rem', color: 'var(--chocolate-400)', fontWeight: 600, maxWidth: 500, margin: 0 }}>
               Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi giảm cân, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.

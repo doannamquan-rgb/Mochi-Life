@@ -4,6 +4,24 @@ Tất cả các thay đổi và tính năng mới của dự án **Mochi Life** 
 
 ---
 
+## 🚀 [v4.6.0] - 2026-08-16
+
+### 🧠 Tùy chỉnh Thinking Level & Tối ưu Trợ lý Mochi AI (Gemini 3.7 Flash)
+
+#### 1. ⚡ Bộ chọn Chế độ Suy nghĩ (Thinking Mode Selector)
+- **3 Chế độ linh hoạt**:
+  - **⚡ Siêu tốc (Fast)**: Tắt suy nghĩ (`thinkingBudget = 0`), phản hồi tức thì với độ trễ thấp nhất cho các câu hỏi ngắn và giao tiếp nhanh.
+  - **⚖️ Cân bằng (Balanced)**: Gemini tự động điều chỉnh ngân sách suy luận theo mức độ phức tạp (Mặc định).
+  - **🧠 Suy luận sâu (Deep Reasoning)**: Cấp ngân sách `8192` token suy nghĩ để phân tích chi tiết dữ liệu học tập, calo và tài chính đa chiều.
+- **Trang Chat Mochi AI (`app/(app)/ai/page.tsx`)**: Tích hợp thanh chọn Segmented Pills trực quan trên header, ghi nhớ tùy chọn vào `localStorage`, và hiển thị trạng thái loading tương ứng.
+- **Trang Cài đặt (`app/(app)/settings/page.tsx`)**: Bổ sung mục chọn chế độ AI Thinking mặc định và nâng phiên bản hệ thống lên `4.6.0`.
+
+#### 2. ⚙️ Tích hợp SDK Backend (`lib/ai/client.ts`, `app/api/ai/chat/route.ts`)
+- Hỗ trợ truyền `thinkingConfig` native vào SDK `@google/genai` v2.16.0.
+- Bổ sung biến môi trường cấu hình tùy chọn `GEMINI_THINKING_BUDGET`.
+
+---
+
 ## 🚀 [v4.5.0] - 2026-08-14
 
 ### 🛡️ Nâng cấp Bảo mật, Tính ổn định Toàn diện & Hệ thống Sao lưu Khôi phục (Enterprise Reliability & Security)

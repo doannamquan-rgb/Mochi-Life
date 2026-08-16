@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import type { MochiChatMessage } from './types';
+import type { MochiChatMessage, AICallConfigOptions } from './types';
 
 let genAIClient: GoogleGenAI | null = null;
 
@@ -18,6 +18,24 @@ export function isAIEnabled(): boolean {
 }
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
+
+/**
+ * Resolves thinkingConfig for Gemini calls based on call options or environment variables.
+ */
+function resolveThinkingConfig(options?: AICallConfigOptions): { thinkingConfig?: { thinkingBudget: number } } {
+  if (options?.thinkingBudget !== undefined) {
+    return { thinkingConfig: { thinkingBudget: options.thinkingBudget } };
+  }
+  const envBudget = process.env.GEMINI_THINKING_BUDGET;
+  if (envBudget !== undefined && envBudget.trim() !== '') {
+    const parsed = parseInt(envBudget, 10);
+    if (!isNaN(parsed)) {
+      return { thinkingConfig: { thinkingBudget: parsed } };
+    }
+  }
+  return {};
+}
+
 
 // ─── Timeout Constants ────────────────────────────────────────────────────────
 const CHAT_TIMEOUT_MS = 30000;
@@ -51,13 +69,19 @@ function isAbortError(error: unknown): boolean {
   return false;
 }
 
-export async function generateChatResponse(systemPrompt: string, messages: MochiChatMessage[], userMessage: string): Promise<string> {
+export async function generateChatResponse(
+  systemPrompt: string,
+  messages: MochiChatMessage[],
+  userMessage: string,
+  options?: AICallConfigOptions
+): Promise<string> {
   const client = getGeminiClient();
   if (!client || !isAIEnabled()) {
     throw new Error('AI is disabled or no API key provided');
   }
 
   const { signal, cleanup } = createTimeoutAbort(CHAT_TIMEOUT_MS);
+  const thinking = resolveThinkingConfig(options);
 
   try {
     const rawContents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
@@ -98,6 +122,7 @@ export async function generateChatResponse(systemPrompt: string, messages: Mochi
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
+        ...thinking,
         abortSignal: signal,
         httpOptions: { timeout: CHAT_TIMEOUT_MS },
       },
@@ -115,13 +140,18 @@ export async function generateChatResponse(systemPrompt: string, messages: Mochi
   }
 }
 
-export async function generateDailyBriefResponse(systemPrompt: string, context: string): Promise<string> {
+export async function generateDailyBriefResponse(
+  systemPrompt: string,
+  context: string,
+  options?: AICallConfigOptions
+): Promise<string> {
   const client = getGeminiClient();
   if (!client || !isAIEnabled()) {
     throw new Error('AI is disabled or no API key provided');
   }
 
   const { signal, cleanup } = createTimeoutAbort(DAILY_BRIEF_TIMEOUT_MS);
+  const thinking = resolveThinkingConfig(options);
 
   try {
     const response = await client.models.generateContent({
@@ -131,6 +161,7 @@ export async function generateDailyBriefResponse(systemPrompt: string, context: 
         systemInstruction: systemPrompt,
         temperature: 0.3,
         responseMimeType: 'application/json',
+        ...thinking,
         abortSignal: signal,
         httpOptions: { timeout: DAILY_BRIEF_TIMEOUT_MS },
       }
@@ -147,13 +178,18 @@ export async function generateDailyBriefResponse(systemPrompt: string, context: 
   }
 }
 
-export async function generateReactionResponse(systemPrompt: string, context: string): Promise<string> {
+export async function generateReactionResponse(
+  systemPrompt: string,
+  context: string,
+  options?: AICallConfigOptions
+): Promise<string> {
   const client = getGeminiClient();
   if (!client || !isAIEnabled()) {
     throw new Error('AI is disabled or no API key provided');
   }
 
   const { signal, cleanup } = createTimeoutAbort(REACTION_TIMEOUT_MS);
+  const thinking = resolveThinkingConfig(options);
 
   try {
     const response = await client.models.generateContent({
@@ -163,6 +199,7 @@ export async function generateReactionResponse(systemPrompt: string, context: st
         systemInstruction: systemPrompt,
         temperature: 0.6,
         responseMimeType: 'application/json',
+        ...thinking,
         abortSignal: signal,
         httpOptions: { timeout: REACTION_TIMEOUT_MS },
       }

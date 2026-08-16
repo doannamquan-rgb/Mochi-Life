@@ -50,12 +50,21 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const userMessage = typeof body.message === 'string' ? body.message.trim() : ''
     const history: MochiChatMessage[] = Array.isArray(body.history) ? body.history : []
+    const thinkingMode: string | undefined = typeof body.thinkingMode === 'string' ? body.thinkingMode : undefined
 
     if (!userMessage) {
       return NextResponse.json(
         { error: 'Vui lòng nhập nội dung câu hỏi.', code: 'INVALID_REQUEST' },
         { status: 400 }
       )
+    }
+
+    // Map thinkingMode to budget: 'fast' -> 0 (disabled), 'deep' -> 8192, 'balanced' -> undefined (dynamic)
+    let thinkingBudget: number | undefined = undefined
+    if (thinkingMode === 'fast') {
+      thinkingBudget = 0
+    } else if (thinkingMode === 'deep') {
+      thinkingBudget = 8192
     }
 
     // 5. Fetch user profile for display name
@@ -73,11 +82,12 @@ export async function POST(request: Request) {
 
     // 7. Build system prompt & call Gemini
     const systemPrompt = buildChatSystemPrompt(aiContext)
-    const replyText = await generateChatResponse(systemPrompt, history, userMessage)
+    const replyText = await generateChatResponse(systemPrompt, history, userMessage, { thinkingBudget })
 
     return NextResponse.json({
       message: replyText,
       domainsUsed: domains,
+      thinkingMode: thinkingMode || 'balanced',
     })
   } catch (err: any) {
     console.error('[Mochi AI Chat Error]:', err)

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
+import type { ThinkingMode } from '@/lib/ai/types'
 
 type Message = {
   id: string
@@ -27,8 +28,28 @@ export default function MochiAIPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>('balanced')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Load saved thinking mode preference
+  useEffect(() => {
+    const savedMode = localStorage.getItem('mochi-ai-thinking-mode') as ThinkingMode | null
+    if (savedMode && ['fast', 'balanced', 'deep'].includes(savedMode)) {
+      setThinkingMode(savedMode)
+    }
+  }, [])
+
+  const handleThinkingModeChange = (mode: ThinkingMode) => {
+    setThinkingMode(mode)
+    localStorage.setItem('mochi-ai-thinking-mode', mode)
+    const labels: Record<ThinkingMode, string> = {
+      fast: '⚡ Đã chuyển sang chế độ Siêu tốc (Tắt suy nghĩ, phản hồi nhanh nhất)',
+      balanced: '⚖️ Đã chuyển sang chế độ Cân bằng (Dynamic Thinking)',
+      deep: '🧠 Đã chuyển sang chế độ Suy luận sâu (Phân tích chuyên sâu & logic cao)',
+    }
+    toast.success(labels[mode])
+  }
 
   // Initial welcome message
   useEffect(() => {
@@ -92,6 +113,7 @@ export default function MochiAIPage() {
         body: JSON.stringify({
           message: text,
           history: apiHistory,
+          thinkingMode,
         }),
       })
 
@@ -145,13 +167,44 @@ export default function MochiAIPage() {
       {/* Header */}
       <div className="ai-header">
         <div className="header-left">
-          <button className="back-btn" onClick={() => router.back()}>
+          <button className="back-btn" onClick={() => router.back()} aria-label="Quay lại">
             ←
           </button>
           <span className="mascot-icon animate-float">🐱</span>
           <div>
             <h1 className="ai-title">Mochi AI Coach</h1>
-            <p className="ai-status">● Đang hoạt động • Trợ lý cá nhân</p>
+            <p className="ai-status">● Đang hoạt động • Gemini 3.7</p>
+          </div>
+        </div>
+
+        {/* Thinking Mode Pill Selector */}
+        <div className="thinking-controls">
+          <span className="thinking-label">Chế độ:</span>
+          <div className="thinking-pills">
+            <button
+              type="button"
+              className={`pill-btn ${thinkingMode === 'fast' ? 'active fast' : ''}`}
+              onClick={() => handleThinkingModeChange('fast')}
+              title="⚡ Siêu tốc: Phản hồi tức thì, không tốn thời gian suy nghĩ"
+            >
+              ⚡ Siêu tốc
+            </button>
+            <button
+              type="button"
+              className={`pill-btn ${thinkingMode === 'balanced' ? 'active balanced' : ''}`}
+              onClick={() => handleThinkingModeChange('balanced')}
+              title="⚖️ Cân bằng: Tự động điều chỉnh suy luận (Mặc định)"
+            >
+              ⚖️ Cân bằng
+            </button>
+            <button
+              type="button"
+              className={`pill-btn ${thinkingMode === 'deep' ? 'active deep' : ''}`}
+              onClick={() => handleThinkingModeChange('deep')}
+              title="🧠 Suy luận sâu: Phân tích kỹ số liệu, logic đa bước"
+            >
+              🧠 Suy luận sâu
+            </button>
           </div>
         </div>
       </div>
@@ -194,7 +247,13 @@ export default function MochiAIPage() {
                 <span />
                 <span />
               </div>
-              <span className="typing-text">Mochi đang suy nghĩ...</span>
+              <span className="typing-text">
+                {thinkingMode === 'deep'
+                  ? 'Mochi đang suy luận và phân tích sâu... 🧠💭'
+                  : thinkingMode === 'fast'
+                  ? 'Mochi đang phản hồi siêu tốc... ⚡'
+                  : 'Mochi đang suy nghĩ... 🐱✨'}
+              </span>
             </div>
           </div>
         )}
@@ -272,6 +331,8 @@ export default function MochiAIPage() {
           box-shadow: var(--shadow-sm);
           border: 1.5px solid var(--chocolate-100);
           margin-bottom: 12px;
+          gap: 12px;
+          flex-wrap: wrap;
         }
 
         .header-left {
@@ -279,6 +340,66 @@ export default function MochiAIPage() {
           align-items: center;
           gap: 12px;
         }
+
+        .thinking-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .thinking-label {
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: var(--chocolate-400);
+        }
+
+        .thinking-pills {
+          display: flex;
+          background: var(--cream);
+          padding: 3px;
+          border-radius: 999px;
+          border: 1px solid var(--chocolate-100);
+          gap: 2px;
+        }
+
+        .pill-btn {
+          border: none;
+          background: transparent;
+          padding: 5px 12px;
+          border-radius: 999px;
+          font-size: 0.76rem;
+          font-weight: 700;
+          color: var(--chocolate-400);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+        }
+
+        .pill-btn:hover:not(.active) {
+          color: var(--chocolate-600);
+          background: rgba(255, 255, 255, 0.6);
+        }
+
+        .pill-btn.active {
+          background: white;
+          box-shadow: 0 2px 6px rgba(45, 30, 20, 0.08);
+        }
+
+        .pill-btn.active.fast {
+          color: #D97706;
+          font-weight: 800;
+        }
+
+        .pill-btn.active.balanced {
+          color: #3BB88E;
+          font-weight: 800;
+        }
+
+        .pill-btn.active.deep {
+          color: #8F71F5;
+          font-weight: 800;
+        }
+
 
         .back-btn {
           background: var(--cream);
@@ -530,6 +651,28 @@ export default function MochiAIPage() {
         @media (max-width: 640px) {
           .ai-page {
             height: calc(100vh - 140px);
+          }
+          .ai-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 16px;
+          }
+          .thinking-controls {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+          }
+          .thinking-pills {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+          }
+          .pill-btn {
+            padding: 5px 4px;
+            font-size: 0.7rem;
+            text-align: center;
           }
           .message-bubble {
             max-width: 85%;

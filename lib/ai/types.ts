@@ -75,3 +75,10 @@ export type MochiAIError = {
   message: string
   retryAfter?: number
 }
+
+export type ThinkingMode = 'fast' | 'balanced' | 'deep'
+
+export interface AICallConfigOptions {
+  thinkingBudget?: number
+}
+
