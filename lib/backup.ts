@@ -8,7 +8,7 @@ import { fetchAllRows } from '@/lib/supabase/fetchAllRows'
 
 export const BACKUP_FORMAT = 'mochi-life-backup'
 export const CURRENT_SCHEMA_VERSION = 1
-export const APP_VERSION = '4.6.0'
+export const APP_VERSION = '6.0.0'
 export const STORAGE_NOTE = 'Database backup does not include uploaded binary files (avatar, weight photos, receipt images).'
 
 export const BACKUP_TABLES = [

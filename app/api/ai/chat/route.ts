@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/supabase/auth-helper'
 import { isAIEnabled, generateChatResponse } from '@/lib/ai/client'
 import { checkRateLimit } from '@/lib/ai/rate-limit'
 import { detectContextDomains, buildContextForDomains } from '@/lib/ai/context'
@@ -16,14 +16,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 2. Auth check server-side
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    // 2. Auth check server-side (Dual Cookie + Bearer)
+    const { user, supabase } = await getAuthenticatedUser(request)
 
-    if (authError || !user) {
+    if (!user || !supabase) {
       return NextResponse.json(
         { error: 'Bạn cần đăng nhập để trò chuyện với Mochi.', code: 'UNAUTHORIZED' },
         { status: 401 }

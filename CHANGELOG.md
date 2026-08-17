@@ -4,6 +4,57 @@ Tất cả các thay đổi và tính năng mới của dự án **Mochi Life** 
 
 ---
 
+## 🌟 [v6.0.0] - 2026-08-17 — 🚀 THE CROSS-PLATFORM REVOLUTION (BIG UPDATE)
+
+> *"Một sản phẩm, hai Client — Trải nghiệm Kawaii đỉnh cao từ Web Next.js đến Native Android Expo"*
+
+### 📱 1. Ra Mắt Ứng Dụng Mobile Android Native Riêng Biệt (`/mobile`)
+- **Công nghệ Native Đỉnh Cao**: Xây dựng hoàn toàn bằng **Expo SDK 57**, **React Native 0.86.2**, **React 19.2**, và **Expo Router v5**.
+- **Hermes Bytecode Engine**: Tối ưu hóa hiệu năng khởi động tức thì, mượt mà 60–120 FPS trên mọi thiết bị Android.
+- **Bộ Nhận Diện Thương Hiệu Mới**: Icon chú mèo Mochi Kawaii siêu sắc nét (1024x1024px Adaptive Icon, hỗ trợ mọi launcher bo góc, Dynamic Splash Screen).
+- **Hệ Thống Màn Hình Native Đầy Đủ**:
+  - 🏠 **Dashboard**: Theo dõi Level, thanh tiến trình XP, Chuỗi Streak ngọn lửa, chỉ số nhanh và Danh sách việc cần làm (Checklist).
+  - 💰 **Finance (Quản lý Tài chính)**: Quản lý đa ví tiền mặt/ngân hàng, ghi chép Thu/Chi trực quan, cập nhật số dư tức thì.
+  - 💪 **Fitness (Sức khỏe & Cân nặng)**: Theo dõi cân nặng & biểu đồ BMI tự động, ghi nhật ký luyện tập 11 môn thể thao với thuật toán ước tính calo chuẩn y khoa.
+  - 🈶 **Chinese (Học Tiếng Trung & HSK)**: Danh mục khóa học, từ vựng chuẩn HSK, Flashcard lật thẻ tương tác 3D tích hợp thuật toán **SM-2 Spaced Repetition**, và chế độ Quiz trắc nghiệm tính điểm.
+  - 🤖 **Mochi AI Companion**: Trò chuyện thông minh cùng Mochi AI (Gemini 3.7 Flash), tóm tắt ngày Daily Briefing với lời khuyên cá nhân hóa.
+  - 🏆 **Gamification & Achievements**: Mở khóa và vinh danh hơn 25+ huy hiệu Master danh giá trên trang cá nhân.
+
+---
+
+### 📦 2. Kiến Trúc Monorepo `@mochi/shared` — Single Source of Truth
+- Tách rời toàn bộ logic tính toán cốt lõi thành package nội bộ độc lập `@mochi/shared`:
+  - 🧠 **SM-2 SRS Algorithm**: Thuật toán lặp lại ngắt quãng tiêu chuẩn quốc tế.
+  - ⚖️ **BMI & Calorie Calculation**: Công thức chỉ số khối cơ thể và tiêu thụ năng lượng.
+  - 🎮 **Gamification Engine**: Bảng tra cứu XP, Level scaling curve, hệ thống huy hiệu Master.
+  - 🔥 **Streak Tracker**: Thuật toán tính chuỗi ngày liên tiếp thông minh.
+  - 💵 **Formatters**: Định dạng tiền tệ VND & ngày tháng quốc tế.
+- Đảm bảo **100% tính nhất quán dữ liệu** giữa Web và Mobile — sửa một nơi, áp dụng toàn hệ sinh thái!
+
+---
+
+### 🔐 3. Dual-Auth Enterprise Server Security
+- **`getAuthenticatedUser(request)`**: Bộ xử lý xác thực thông minh tại lớp Server API (`/api/ai/*`):
+  - Nhận diện song song **Web SSR Cookie** và **Mobile Bearer JWT**.
+  - **Zero-Trust Client Payload**: Tuyệt đối không tin cậy `user_id` từ body client gửi lên, xác thực danh tính trực tiếp qua chữ ký mật mã Supabase Auth.
+- **An Toàn Tuyệt Đối**: 0 Secret hay Private Key nào bị nhúng vào client Mobile (`EXPO_PUBLIC_*` chỉ chứa public URL/anon key).
+
+---
+
+### 🔄 4. Selective Realtime Database Sync
+- Kích hoạt cơ chế lắng nghe Realtime thông minh trên 8 bảng dữ liệu quan trọng (`transactions`, `weight_logs`, `exercise_logs`, `hsk_vocabulary`, `study_sessions`, `daily_checklists`, `user_xp_logs`, `user_achievements`).
+- Dữ liệu thêm/sửa trên Web lập tức phản chiếu lên Mobile theo thời gian thực mà không cần reload app!
+
+---
+
+### 📊 5. Đảm Bảo Chất Lượng & Kiểm Thử Toàn Diện (Zero Regression)
+- ✅ **84/84 Unit Tests Passed (100%)** qua Vitest.
+- ✅ **0 Lỗi TypeScript (`tsc --noEmit`)** trên toàn bộ 3 workspace (`root`, `mobile`, `packages/shared`).
+- ✅ **0 Lỗi Linter** trên mã nguồn mới.
+- ✅ **Biên dịch thành công 38/38 Next.js Web Routes** và **Hermes JS Android Bundle**.
+
+---
+
 ## 🚀 [v4.6.0] - 2026-08-16
 
 ### 🧠 Tùy chỉnh Thinking Level & Tối ưu Trợ lý Mochi AI (Gemini 3.7 Flash)

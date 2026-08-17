@@ -40,4 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# expo & mobile
+.expo/
+dist/
+*.jks
+*.keystore
+*.apk
+*.aab
+
 .vercel

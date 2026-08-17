@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/supabase/auth-helper'
 import { checkRateLimit } from '@/lib/ai/rate-limit'
 import { generateSmartReaction } from '@/lib/ai/reactions/engine'
 import type { MochiReactionEvent } from '@/lib/ai/reactions/types'
@@ -27,11 +27,10 @@ const RequestBodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Auth — server-side, always required
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    // 1. Auth — server-side (Dual Cookie + Bearer)
+    const { user, supabase } = await getAuthenticatedUser(req)
 
-    if (authError || !user) {
+    if (!user || !supabase) {
       return NextResponse.json(
         { error: 'AUTH_ERROR', message: 'Unauthorized' },
         { status: 401 }

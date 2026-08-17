@@ -1,17 +1,23 @@
 {
   "name": "hsk",
-  "version": "4.6.0",
+  "version": "6.0.0",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "mobile"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "eas-build-pre-install": "npm install --package-lock-only"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",
+    "@mochi/shared": "*",
     "@hookform/resolvers": "^5.5.7",
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-checkbox": "^1.3.11",
