@@ -228,3 +228,22 @@ export const WORD_TYPE_LABELS: Record<string, string> = {
   interjection: 'Thán từ',
   other: 'Khác',
 }
+
+// Amount validation helper
+export function parseAndValidateVNDAmount(input: string | number): { valid: boolean; value: number; error?: string } {
+  if (typeof input === 'number') {
+    if (!Number.isFinite(input) || isNaN(input) || input <= 0) {
+      return { valid: false, value: 0, error: 'Số tiền phải lớn hơn 0' }
+    }
+    return { valid: true, value: Math.round(input) }
+  }
+  if (typeof input === 'string') {
+    const cleaned = input.replace(/[^0-9]/g, '')
+    const parsed = parseInt(cleaned, 10)
+    if (isNaN(parsed) || parsed <= 0) {
+      return { valid: false, value: 0, error: 'Vui lòng nhập số tiền hợp lệ' }
+    }
+    return { valid: true, value: parsed }
+  }
+  return { valid: false, value: 0, error: 'Dữ liệu số tiền không hợp lệ' }
+}

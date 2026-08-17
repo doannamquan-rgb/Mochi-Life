@@ -1,18 +1,53 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { Layers, HelpCircle } from 'lucide-react-native'
+import {
+  Layers,
+  HelpCircle,
+  ChevronDown,
+  Check,
+  Search,
+  BookOpen,
+} from 'lucide-react-native'
 import { useChinese } from '../../src/hooks/useChinese'
-import { MochiCard } from '../../src/components/ui/MochiCard'
-import { MochiBadge } from '../../src/components/ui/MochiBadge'
-import { StatCard } from '../../src/components/ui/StatCard'
+import {
+  MochiCard,
+  MochiBadge,
+  StatCard,
+  KeyboardSafeModal,
+  MochiButton,
+} from '../../src/components/ui'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 
 export default function ChineseScreen() {
   const router = useRouter()
-  const { activeCourse, vocabulary, totalCount, learnedCount, masteredCount, dueCount, loading, refetch } = useChinese()
+  const {
+    courses,
+    activeCourse,
+    vocabulary,
+    totalCount,
+    learnedCount,
+    masteredCount,
+    dueCount,
+    loading,
+    switchCourse,
+    refetch,
+  } = useChinese()
+
   const [refreshing, setRefreshing] = useState(false)
+  const [isCourseModalOpen, setIsCourseModalOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [switching, setSwitching] = useState(false)
 
   const onRefresh = async () => {
     setRefreshing(true)
@@ -20,26 +55,91 @@ export default function ChineseScreen() {
     setRefreshing(false)
   }
 
-  const progressPct = totalCount > 0 ? Math.round((learnedCount / totalCount) * 100) : 0
+  const handleSelectCourse = async (courseId: string) => {
+    if (courseId === activeCourse?.id) {
+      setIsCourseModalOpen(false)
+      return
+    }
+
+    setSwitching(true)
+    try {
+      await switchCourse(courseId)
+      setIsCourseModalOpen(false)
+    } catch (e: any) {
+      Alert.alert('Lỗi', e.message || 'Không thể chuyển khóa học')
+    } finally {
+      setSwitching(false)
+    }
+  }
+
+  const progressPct = totalCount > 0 ? Math.min(100, Math.round((learnedCount / totalCount) * 100)) : 0
+
+  const filteredVocabulary = vocabulary.filter(v => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase().trim()
+    return (
+      v.hanzi.toLowerCase().includes(q) ||
+      v.pinyin.toLowerCase().includes(q) ||
+      v.meaning.toLowerCase().includes(q)
+    )
+  })
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing || loading} onRefresh={onRefresh} colors={[colors.cheese]} />}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing || loading}
+            onRefresh={onRefresh}
+            colors={[colors.cheese]}
+          />
+        }
       >
-        {/* Header */}
+        {/* Header with Course Selector */}
         <View style={styles.header}>
-          <Text style={styles.title}>Học tiếng Trung 🈶</Text>
+          <View>
+            <Text style={styles.title}>Học tiếng Trung 🈶</Text>
+            <Text style={styles.subtitle}>Phương pháp Spaced Repetition (SM-2)</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.courseSwitchBtn}
+            onPress={() => setIsCourseModalOpen(true)}
+            activeOpacity={0.8}
+          >
+            <BookOpen size={16} color={colors.chocolate} />
+            <Text style={styles.courseSwitchText}>
+              {activeCourse?.level || activeCourse?.name || 'Chọn khóa'}
+            </Text>
+            <ChevronDown size={14} color={colors.chocolate} />
+          </TouchableOpacity>
         </View>
 
         {/* Active Course Card */}
-        <MochiCard style={styles.courseCard}>
+        <MochiCard style={styles.courseCard} accentColor={colors.lavender}>
           <View style={styles.courseHeader}>
-            <Text style={styles.courseLevelBadge}>{activeCourse?.level || 'HSK 1'}</Text>
-            <Text style={styles.courseTitle}>{activeCourse?.name || 'Khóa học HSK'}</Text>
+            <View style={styles.badgeWrapper}>
+              <Text style={styles.courseLevelBadge}>{activeCourse?.level || 'HSK'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.courseTitle}>
+                {activeCourse?.name || 'Chưa chọn khóa học'}
+              </Text>
+              <Text style={styles.courseSub}>
+                {totalCount} từ vựng • Spaced Repetition
+              </Text>
+            </View>
           </View>
-          <Text style={styles.courseProgressSub}>Tiến độ: {learnedCount}/{totalCount} từ vựng ({progressPct}%)</Text>
+
+          <View style={styles.progressRow}>
+            <Text style={styles.courseProgressSub}>
+              Đã học: {learnedCount}/{totalCount} từ
+            </Text>
+            <Text style={styles.progressPctText}>{progressPct}%</Text>
+          </View>
+
           <View style={styles.progressBg}>
             <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
           </View>
@@ -49,23 +149,31 @@ export default function ChineseScreen() {
         <Text style={styles.sectionTitle}>Chế độ học tập 🚀</Text>
         <View style={styles.modesRow}>
           <TouchableOpacity
-            style={[styles.modeCard, { backgroundColor: colors.lavenderLight, borderColor: colors.lavender }]}
+            style={[
+              styles.modeCard,
+              { backgroundColor: colors.lavenderLight, borderColor: colors.lavender },
+            ]}
             activeOpacity={0.8}
             onPress={() => router.push('/chinese/flashcard')}
           >
             <Layers size={28} color={colors.lavenderDark} />
             <Text style={styles.modeTitle}>Flashcard SRS</Text>
-            <Text style={styles.modeSub}>{dueCount > 0 ? `Cần ôn: ${dueCount} từ` : 'Đã hoàn thành ôn'}</Text>
+            <Text style={styles.modeSub}>
+              {dueCount > 0 ? `Cần ôn: ${dueCount} từ` : 'Đã hoàn thành ôn tập 🎉'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.modeCard, { backgroundColor: colors.cheeseLight, borderColor: colors.cheese }]}
+            style={[
+              styles.modeCard,
+              { backgroundColor: colors.cheeseLight, borderColor: colors.cheese },
+            ]}
             activeOpacity={0.8}
             onPress={() => router.push('/chinese/quiz')}
           >
             <HelpCircle size={28} color={colors.chocolate} />
             <Text style={styles.modeTitle}>Trắc nghiệm</Text>
-            <Text style={styles.modeSub}>Kiểm tra ghi nhớ</Text>
+            <Text style={styles.modeSub}>Kiểm tra 4 đáp án</Text>
           </TouchableOpacity>
         </View>
 
@@ -75,7 +183,7 @@ export default function ChineseScreen() {
           <StatCard
             title="Từ cần ôn"
             value={`${dueCount}`}
-            subtitle="Hôm nay"
+            subtitle="Đến hạn hôm nay"
             icon="⏰"
             accentColor={colors.peach}
             style={styles.gridItem}
@@ -90,37 +198,133 @@ export default function ChineseScreen() {
           />
         </View>
 
-        {/* Vocabulary List Preview */}
+        {/* Search & Vocabulary List */}
         <View style={styles.vocabHeader}>
           <Text style={styles.sectionTitle}>Danh sách từ vựng 📚</Text>
-          <Text style={styles.vocabCountText}>{totalCount} từ</Text>
+          <Text style={styles.vocabCountText}>
+            {filteredVocabulary.length}/{totalCount} từ
+          </Text>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchBar}>
+          <Search size={16} color={colors.chocolateMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm theo chữ Hán, pinyin, tiếng Việt..."
+            placeholderTextColor={colors.chocolateMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
+          />
         </View>
 
         <MochiCard style={styles.vocabListCard}>
-          {vocabulary.length === 0 ? (
+          {filteredVocabulary.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyMascot}>🐱📖</Text>
-              <Text style={styles.emptyText}>Chưa có từ vựng nào trong khóa học này.</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery
+                  ? 'Không tìm thấy từ vựng phù hợp'
+                  : 'Chưa có từ vựng nào trong khóa học này.'}
+              </Text>
             </View>
           ) : (
-            vocabulary.slice(0, 30).map(v => (
+            filteredVocabulary.slice(0, 60).map(v => (
               <View key={v.id} style={styles.vocabItem}>
                 <View style={styles.vocabLeft}>
                   <Text style={styles.hanzi}>{v.hanzi}</Text>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.pinyin}>{v.pinyin}</Text>
-                    <Text style={styles.meaning}>{v.meaning}</Text>
+                    <Text style={styles.meaning} numberOfLines={2}>
+                      {v.meaning}
+                    </Text>
                   </View>
                 </View>
                 <MochiBadge
-                  label={v.memory_level === 'mastered' ? 'Thuộc' : v.memory_level === 'learned' ? 'Đã nhớ' : v.memory_level === 'hard' ? 'Khó' : 'Chưa học'}
-                  variant={v.memory_level === 'mastered' ? 'cheese' : v.memory_level === 'learned' ? 'mint' : v.memory_level === 'hard' ? 'peach' : 'neutral'}
+                  label={
+                    v.memory_level === 'mastered'
+                      ? 'Thuộc'
+                      : v.memory_level === 'learned'
+                      ? 'Đã nhớ'
+                      : v.memory_level === 'hard'
+                      ? 'Khó'
+                      : 'Chưa học'
+                  }
+                  variant={
+                    v.memory_level === 'mastered'
+                      ? 'cheese'
+                      : v.memory_level === 'learned'
+                      ? 'mint'
+                      : v.memory_level === 'hard'
+                      ? 'peach'
+                      : 'neutral'
+                  }
                 />
               </View>
             ))
           )}
         </MochiCard>
       </ScrollView>
+
+      {/* Course Switcher Bottom Sheet Modal */}
+      <KeyboardSafeModal
+        visible={isCourseModalOpen}
+        onClose={() => setIsCourseModalOpen(false)}
+      >
+        <Text style={styles.modalTitle}>Chọn khóa học tiếng Trung 🈶</Text>
+        <Text style={styles.modalSubtitle}>
+          Dữ liệu tiến độ và từ vựng sẽ được đồng bộ ngay lập tức.
+        </Text>
+
+        <View style={styles.courseOptionsList}>
+          {courses.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>Chưa có khóa học nào trên tài khoản của bạn.</Text>
+            </View>
+          ) : (
+            courses.map(c => {
+              const isSelected = c.id === activeCourse?.id
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[
+                    styles.courseOptionItem,
+                    isSelected && styles.courseOptionItemSelected,
+                  ]}
+                  onPress={() => handleSelectCourse(c.id)}
+                  disabled={switching}
+                >
+                  <View style={styles.courseOptionLeft}>
+                    <View
+                      style={[
+                        styles.courseOptionBadge,
+                        isSelected && { backgroundColor: colors.cheese },
+                      ]}
+                    >
+                      <Text style={styles.courseOptionLevel}>{c.level || 'HSK'}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.courseOptionName}>{c.name}</Text>
+                      <Text style={styles.courseOptionCount}>
+                        {c.total_vocabulary || 0} từ vựng
+                      </Text>
+                    </View>
+                  </View>
+                  {isSelected && <Check size={20} color={colors.chocolate} />}
+                </TouchableOpacity>
+              )
+            })
+          )}
+        </View>
+
+        <MochiButton
+          title="Đóng"
+          variant="ghost"
+          onPress={() => setIsCourseModalOpen(false)}
+          style={{ marginTop: spacing.md }}
+        />
+      </KeyboardSafeModal>
     </SafeAreaView>
   )
 }
@@ -135,11 +339,38 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
   title: {
     ...typography.titleLarge,
     fontWeight: '900',
+    color: colors.chocolate,
+  },
+  subtitle: {
+    ...typography.caption,
+    color: colors.chocolateMuted,
+    marginTop: 2,
+  },
+  courseSwitchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.cheese,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  courseSwitchText: {
+    ...typography.caption,
+    fontWeight: '800',
     color: colors.chocolate,
   },
   courseCard: {
@@ -150,32 +381,51 @@ const styles = StyleSheet.create({
   courseHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 12,
+    marginBottom: spacing.md,
+  },
+  badgeWrapper: {
+    backgroundColor: colors.lavenderLight,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lavender,
   },
   courseLevelBadge: {
-    ...typography.caption,
-    fontWeight: '900',
-    backgroundColor: colors.lavenderLight,
+    ...typography.bodySmall,
+    fontWeight: '800',
     color: colors.lavenderDark,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.md,
   },
   courseTitle: {
     ...typography.titleSmall,
     fontWeight: '800',
     color: colors.chocolate,
   },
-  courseProgressSub: {
+  courseSub: {
     ...typography.caption,
     color: colors.chocolateMuted,
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 2,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  courseProgressSub: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.chocolateLight,
+  },
+  progressPctText: {
+    ...typography.caption,
+    fontWeight: '800',
+    color: colors.lavenderDark,
   },
   progressBg: {
-    height: 8,
-    backgroundColor: colors.chocolateBorder,
+    height: 10,
+    backgroundColor: colors.cream,
     borderRadius: radius.full,
     overflow: 'hidden',
   },
@@ -186,37 +436,34 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.titleSmall,
-    color: colors.chocolate,
     fontWeight: '800',
+    color: colors.chocolate,
     marginBottom: spacing.sm,
   },
   modesRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     marginBottom: spacing.lg,
   },
   modeCard: {
     flex: 1,
-    padding: spacing.lg,
-    borderRadius: radius.xl,
+    padding: spacing.md,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
   },
   modeTitle: {
     ...typography.bodyMedium,
     fontWeight: '800',
     color: colors.chocolate,
-    marginTop: 8,
   },
   modeSub: {
     ...typography.caption,
     color: colors.chocolateLight,
-    marginTop: 2,
   },
   grid: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     marginBottom: spacing.lg,
   },
   gridItem: {
@@ -224,25 +471,45 @@ const styles = StyleSheet.create({
   },
   vocabHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
   },
   vocabCountText: {
     ...typography.caption,
     fontWeight: '700',
     color: colors.chocolateMuted,
   },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.chocolateBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.bodySmall,
+    color: colors.chocolate,
+    padding: 0,
+  },
   vocabListCard: {
-    padding: spacing.md,
+    padding: 0,
+    backgroundColor: colors.white,
+    overflow: 'hidden',
   },
   emptyState: {
+    padding: spacing.xl,
     alignItems: 'center',
-    paddingVertical: spacing.xl,
   },
   emptyMascot: {
-    fontSize: 36,
-    marginBottom: 8,
+    fontSize: 32,
+    marginBottom: 6,
   },
   emptyText: {
     ...typography.bodySmall,
@@ -253,15 +520,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.chocolateBorder,
   },
   vocabLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     flex: 1,
+    marginRight: 8,
   },
   hanzi: {
     fontSize: 22,
@@ -270,12 +538,67 @@ const styles = StyleSheet.create({
     minWidth: 44,
   },
   pinyin: {
-    ...typography.bodySmall,
+    ...typography.caption,
     fontWeight: '700',
-    color: colors.lavenderDark,
+    color: colors.peachDark,
   },
   meaning: {
-    ...typography.caption,
+    ...typography.bodySmall,
     color: colors.chocolateLight,
+    marginTop: 2,
+  },
+  modalTitle: {
+    ...typography.titleMedium,
+    fontWeight: '900',
+    color: colors.chocolate,
+    marginBottom: 4,
+    marginTop: 4,
+  },
+  modalSubtitle: {
+    ...typography.bodySmall,
+    color: colors.chocolateMuted,
+    marginBottom: spacing.md,
+  },
+  courseOptionsList: {
+    gap: 8,
+  },
+  courseOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.chocolateBorder,
+    backgroundColor: colors.white,
+  },
+  courseOptionItemSelected: {
+    borderColor: colors.cheese,
+    backgroundColor: colors.cheeseLight,
+  },
+  courseOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  courseOptionBadge: {
+    backgroundColor: colors.cream,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
+  courseOptionLevel: {
+    ...typography.caption,
+    fontWeight: '800',
+    color: colors.chocolate,
+  },
+  courseOptionName: {
+    ...typography.bodyMedium,
+    fontWeight: '700',
+    color: colors.chocolate,
+  },
+  courseOptionCount: {
+    ...typography.caption,
+    color: colors.chocolateMuted,
   },
 })

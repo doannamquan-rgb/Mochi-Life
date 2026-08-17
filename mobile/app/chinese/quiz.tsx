@@ -2,8 +2,12 @@ import React, { useState, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useChinese } from '../../src/hooks/useChinese'
+import { useMochiReaction } from '../../src/hooks/useMochiReaction'
+import { useAuth } from '../../src/lib/auth-context'
+import { supabase } from '../../src/lib/supabase'
 import { MochiCard } from '../../src/components/ui/MochiCard'
 import { MochiButton } from '../../src/components/ui/MochiButton'
+import { todayString } from '@mochi/shared'
 import type { HskVocabulary } from '@mochi/shared'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 
@@ -15,7 +19,9 @@ interface Question {
 
 export default function QuizScreen() {
   const router = useRouter()
+  const { user } = useAuth()
   const { vocabulary } = useChinese()
+  const { triggerReaction } = useMochiReaction()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
   const [score, setScore] = useState(0)
@@ -55,13 +61,35 @@ export default function QuizScreen() {
     }
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1)
       setSelectedOption(null)
       setIsAnswered(false)
     } else {
       setQuizCompleted(true)
+      triggerReaction('study_session_completed')
+
+      // Record study session and award XP
+      if (user?.id) {
+        try {
+          const today = todayString()
+          await supabase.from('study_sessions').insert({
+            user_id: user.id,
+            session_date: today,
+            quiz_score: score,
+            duration_minutes: 5,
+            is_auto_generated: true,
+          })
+          await supabase.from('user_xp_logs').insert({
+            user_id: user.id,
+            amount: 15,
+            action_type: 'quiz_completed',
+          })
+        } catch (e) {
+          // Non-blocking
+        }
+      }
     }
   }
 

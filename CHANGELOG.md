@@ -4,6 +4,42 @@ Tất cả các thay đổi và tính năng mới của dự án **Mochi Life** 
 
 ---
 
+## 🌟 [v6.1.0] - 2026-08-17 — 🛡️ FULL MOBILE STABILIZATION & PARITY HARDENING
+
+> *"Ổn định toàn diện Mobile, Giao dịch tài chính nguyên tử (Atomic RPC), Đồng bộ Realtime 14 bảng, AI Thinking Modes, Khóa học tiếng Trung chuẩn hóa & Quản lý cập nhật OTA"*
+
+### 🛡️ 1. Tài Chính Nguyên Tử & Chống Lệch Số Dư Ví (Atomic Finance RPC)
+- **Migration 014**: Chuyển toàn bộ thao tác thêm/xóa giao dịch thành PostgreSQL Stored Procedure nguyên tử (`record_transaction_atomic` & `delete_transaction_atomic`) với khóa dòng `FOR UPDATE`.
+- Loại bỏ hoàn toàn race condition và tình trạng ghi đè số dư giữa Web và Mobile.
+- Tách riêng câu truy vấn tổng hợp tháng theo date range, khắc phục triệt để lỗi thống kê bị cắt ngắn do giới hạn danh sách 50 giao dịch.
+
+### 🈶 2. Chuẩn Hóa Khóa Học Tiếng Trung & Course Switcher
+- Thống nhất nguồn chân lý (Source of truth) khóa học hoạt động theo `user_profiles.active_hsk_course_id`.
+- Tích hợp Modal chuyển đổi khóa học (Course Switcher) trên mobile, đồng bộ hai chiều tức thì với Web.
+- Tự động fallback cho dữ liệu từ vựng cũ (`course_id IS NULL`).
+- Tích hợp ghi nhận phiên học và cộng điểm XP khi hoàn thành Flashcard (SM-2) và Quiz trắc nghiệm.
+
+### 🤖 3. Mochi AI Assistant (Gemini 3.7 Flash) & Smart Reactions
+- Bổ sung 3 chế độ suy luận: `⚡ Siêu tốc` (fast), `⚖️ Cân bằng` (balanced), và `🧠 Suy luận sâu` (deep).
+- Lưu chế độ ưa thích vào `AsyncStorage` và quản lý hủy request bằng `AbortController`.
+- Hiển thị bong bóng lỗi thân thiện (401/429/500/mạng) kèm nút "Thử lại" một chạm.
+- Hệ thống Floating AI Reactions (`useMochiReaction`) tự động chúc mừng và động viên người dùng sau mỗi thao tác.
+
+### 🔄 4. Realtime Sync Toàn Diện (14 Bảng) & AppState Lifecycle
+- Mở rộng kênh `supabase_realtime` lắng nghe toàn bộ 14 bảng người dùng với bộ lọc `user_id`.
+- Quản lý vòng đời `AppState` (`useAppLifecycleResync`) tự động kiểm tra phiên và làm mới dữ liệu khi mở lại ứng dụng (debounce 15 giây).
+
+### 📱 5. Tối Ưu Bàn Phím & Trải Nghiệm Biểu Mẫu (Keyboard-Safe UX)
+- Xây dựng `KeyboardSafeModal` và `KeyboardAwareContainer` đảm bảo toàn bộ form nhập liệu, danh mục và nút bấm không bị che khuất trên Android.
+- Khắc phục lỗi BMI silent fallback (không tự động gán 170cm, hướng dẫn người dùng cập nhật trong Cài đặt).
+- Bổ sung chức năng chỉnh sửa hồ sơ (Tên hiển thị, Chiều cao) trong Cài đặt.
+
+### 🚀 6. Hệ Thống Cập Nhật OTA (EAS Update Manager)
+- Tích hợp `useAppUpdates` hook và `UpdateBanner` thông báo khi có bản cập nhật mới được tải về.
+- Thêm bảng điều khiển phiên bản và nút "Kiểm tra cập nhật" trực tiếp trong Cài đặt.
+
+---
+
 ## 🌟 [v6.0.0] - 2026-08-17 — 🚀 THE CROSS-PLATFORM REVOLUTION (BIG UPDATE)
 
 > *"Một sản phẩm, hai Client — Trải nghiệm Kawaii đỉnh cao từ Web Next.js đến Native Android Expo"*

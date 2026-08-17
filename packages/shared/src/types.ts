@@ -393,3 +393,55 @@ export type TransactionFilter = {
   date_to?: string
   search?: string
 }
+
+// AI Thinking Modes
+export type ThinkingMode = 'fast' | 'balanced' | 'deep'
+
+export interface ThinkingModeOption {
+  id: ThinkingMode
+  label: string
+  icon: string
+  description: string
+}
+
+export const THINKING_MODE_OPTIONS: ThinkingModeOption[] = [
+  {
+    id: 'fast',
+    label: 'Siêu tốc',
+    icon: '⚡',
+    description: 'Phản hồi tức thì, tối ưu tốc độ',
+  },
+  {
+    id: 'balanced',
+    label: 'Cân bằng',
+    icon: '⚖️',
+    description: 'Cân bằng tốc độ và chất lượng',
+  },
+  {
+    id: 'deep',
+    label: 'Suy luận sâu',
+    icon: '🧠',
+    description: 'Phân tích chi tiết và sâu sắc',
+  },
+]
+
+// AI Smart Reaction Events
+export type MochiReactionEvent =
+  | 'exercise_logged'
+  | 'weight_logged'
+  | 'transaction_expense_created'
+  | 'transaction_income_created'
+  | 'study_session_completed'
+  | 'review_session_completed'
+
+// Atomic Transaction Payload
+export interface CreateTransactionAtomicInput {
+  type: 'expense' | 'income'
+  amount: number
+  transaction_date: string
+  wallet_id?: string
+  category_id?: string
+  description?: string
+  note?: string
+  payment_method?: string
+}

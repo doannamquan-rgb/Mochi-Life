@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useChinese } from '../../src/hooks/useChinese'
+import { useMochiReaction } from '../../src/hooks/useMochiReaction'
 import { MochiCard } from '../../src/components/ui/MochiCard'
 import { MochiButton } from '../../src/components/ui/MochiButton'
 import type { ReviewRating } from '@mochi/shared'
@@ -10,6 +11,7 @@ import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 export default function FlashcardScreen() {
   const router = useRouter()
   const { vocabulary, dueVocab, submitReview } = useChinese()
+  const { triggerReaction } = useMochiReaction()
   const studyList = dueVocab.length > 0 ? dueVocab : vocabulary
 
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -31,6 +33,7 @@ export default function FlashcardScreen() {
       if (currentIndex < studyList.length - 1) {
         setCurrentIndex(prev => prev + 1)
       } else {
+        triggerReaction('review_session_completed')
         Alert.alert(
           'Hoàn thành buổi ôn tập! 🎉',
           `Bạn đã ôn tập xong ${sessionReviewed + 1} từ vựng hôm nay!`,

@@ -1,16 +1,47 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Modal, Alert } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Plus, ArrowUpRight, ArrowDownLeft } from 'lucide-react-native'
+import { Plus, ArrowUpRight, ArrowDownLeft, Trash2, CreditCard } from 'lucide-react-native'
 import { useFinance } from '../../src/hooks/useFinance'
-import { MochiCard } from '../../src/components/ui/MochiCard'
-import { MochiButton } from '../../src/components/ui/MochiButton'
-import { MochiInput } from '../../src/components/ui/MochiInput'
-import { formatVND, formatTransactionAmount, todayString, formatDate } from '@mochi/shared'
+import { useMochiReaction } from '../../src/hooks/useMochiReaction'
+import {
+  MochiCard,
+  MochiButton,
+  MochiInput,
+  KeyboardSafeModal,
+} from '../../src/components/ui'
+import {
+  formatVND,
+  formatTransactionAmount,
+  todayString,
+  formatDate,
+  parseAndValidateVNDAmount,
+} from '@mochi/shared'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 
 export default function FinanceScreen() {
-  const { wallets, categories, transactions, totalBalance, monthExpense, monthIncome, loading, addTransaction, refetch } = useFinance()
+  const {
+    wallets,
+    categories,
+    transactions,
+    totalBalance,
+    monthExpense,
+    monthIncome,
+    loading,
+    addTransaction,
+    deleteTransaction,
+    refetch,
+  } = useFinance()
+
+  const { triggerReaction } = useMochiReaction()
   const [refreshing, setRefreshing] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -20,7 +51,9 @@ export default function FinanceScreen() {
   const [categoryId, setCategoryId] = useState<string>('')
   const [walletId, setWalletId] = useState<string>('')
   const [description, setDescription] = useState('')
+  const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const onRefresh = async () => {
     setRefreshing(true)
@@ -32,16 +65,23 @@ export default function FinanceScreen() {
     setType('expense')
     setAmount('')
     setDescription('')
+    setNote('')
     setWalletId(wallets[0]?.id || '')
     const defaultCat = categories.find(c => c.type === 'expense')
     setCategoryId(defaultCat?.id || '')
     setIsModalOpen(true)
   }
 
+  const handleTypeChange = (newType: 'expense' | 'income') => {
+    setType(newType)
+    const matchingCat = categories.find(c => c.type === newType)
+    setCategoryId(matchingCat?.id || '')
+  }
+
   const handleSubmitTransaction = async () => {
-    const numericAmount = parseFloat(amount.replace(/[^0-9]/g, ''))
-    if (!numericAmount || numericAmount <= 0) {
-      Alert.alert('Thông báo', 'Vui lòng nhập số tiền hợp lệ')
+    const validation = parseAndValidateVNDAmount(amount)
+    if (!validation.valid || validation.value <= 0) {
+      Alert.alert('Thông báo', validation.error || 'Vui lòng nhập số tiền hợp lệ (> 0 VNĐ)')
       return
     }
 
@@ -49,13 +89,20 @@ export default function FinanceScreen() {
     try {
       await addTransaction({
         type,
-        amount: numericAmount,
+        amount: validation.value,
         transaction_date: todayString(),
         category_id: categoryId || undefined,
         wallet_id: walletId || undefined,
         description: description.trim() || undefined,
+        note: note.trim() || undefined,
       })
+
       setIsModalOpen(false)
+
+      // Trigger AI reaction
+      triggerReaction(
+        type === 'income' ? 'transaction_income_created' : 'transaction_expense_created'
+      )
     } catch (e: any) {
       Alert.alert('Lỗi', e.message || 'Không thể tạo giao dịch')
     } finally {
@@ -63,16 +110,51 @@ export default function FinanceScreen() {
     }
   }
 
+  const handleDelete = (txId: string, desc: string) => {
+    Alert.alert(
+      'Xóa giao dịch',
+      `Bạn có chắc chắn muốn xóa "${desc}"? Số dư ví sẽ được tự động hoàn lại.`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingId(txId)
+            try {
+              await deleteTransaction(txId)
+            } catch (err: any) {
+              Alert.alert('Lỗi', err.message || 'Không thể xóa giao dịch')
+            } finally {
+              setDeletingId(null)
+            }
+          },
+        },
+      ]
+    )
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing || loading} onRefresh={onRefresh} colors={[colors.cheese]} />}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing || loading}
+            onRefresh={onRefresh}
+            colors={[colors.cheese]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Quản lý tài chính 💰</Text>
-          <TouchableOpacity style={styles.addIconBtn} onPress={handleOpenAdd}>
+          <TouchableOpacity
+            style={styles.addIconBtn}
+            onPress={handleOpenAdd}
+            accessibilityLabel="Thêm giao dịch mới"
+          >
             <Plus size={20} color={colors.chocolate} />
           </TouchableOpacity>
         </View>
@@ -106,16 +188,27 @@ export default function FinanceScreen() {
 
         {/* Wallets Horizontal List */}
         <Text style={styles.sectionTitle}>Ví tiền 💳</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.walletsScroll}>
-          {wallets.map(wallet => (
-            <MochiCard key={wallet.id} style={styles.walletCard}>
-              <View style={styles.walletHeader}>
-                <Text style={styles.walletIcon}>{wallet.icon || '🪙'}</Text>
-                <Text style={styles.walletName}>{wallet.name}</Text>
-              </View>
-              <Text style={styles.walletBalance}>{formatVND(wallet.balance)}</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.walletsScroll}
+          contentContainerStyle={{ paddingRight: spacing.lg }}
+        >
+          {wallets.length === 0 ? (
+            <MochiCard style={styles.walletCard}>
+              <Text style={styles.walletName}>Chưa có ví nào</Text>
             </MochiCard>
-          ))}
+          ) : (
+            wallets.map(wallet => (
+              <MochiCard key={wallet.id} style={styles.walletCard}>
+                <View style={styles.walletHeader}>
+                  <Text style={styles.walletIcon}>{wallet.icon || '🪙'}</Text>
+                  <Text style={styles.walletName}>{wallet.name}</Text>
+                </View>
+                <Text style={styles.walletBalance}>{formatVND(wallet.balance)}</Text>
+              </MochiCard>
+            ))
+          )}
         </ScrollView>
 
         {/* Recent Transactions List */}
@@ -128,93 +221,173 @@ export default function FinanceScreen() {
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyMascot}>🐱💳</Text>
-              <Text style={styles.emptyText}>Chưa có giao dịch nào. Bấm '+ Thêm mới' để ghi chép nhé!</Text>
+              <Text style={styles.emptyText}>
+                Chưa có giao dịch nào. Bấm '+ Thêm mới' để ghi chép nhé!
+              </Text>
             </View>
           ) : (
             transactions.map(tx => (
               <View key={tx.id} style={styles.txItem}>
                 <View style={styles.txLeft}>
-                  <Text style={styles.txIcon}>{tx.category?.icon || (tx.type === 'income' ? '💰' : '🍜')}</Text>
-                  <View>
-                    <Text style={styles.txDesc}>{tx.description || tx.category?.name || 'Giao dịch'}</Text>
-                    <Text style={styles.txDate}>{formatDate(tx.transaction_date)} • {tx.wallet?.name || 'Ví'}</Text>
+                  <Text style={styles.txIcon}>
+                    {tx.category?.icon || (tx.type === 'income' ? '💰' : '🍜')}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.txDesc}>
+                      {tx.description || tx.category?.name || 'Giao dịch'}
+                    </Text>
+                    <Text style={styles.txDate}>
+                      {formatDate(tx.transaction_date)} • {tx.wallet?.name || 'Ví'}
+                    </Text>
                   </View>
                 </View>
-                <Text
-                  style={[
-                    styles.txAmount,
-                    tx.type === 'income' ? styles.txIncome : styles.txExpense,
-                  ]}
-                >
-                  {formatTransactionAmount(tx.amount, tx.type)}
-                </Text>
+                <View style={styles.txRight}>
+                  <Text
+                    style={[
+                      styles.txAmount,
+                      tx.type === 'income' ? styles.txIncome : styles.txExpense,
+                    ]}
+                  >
+                    {formatTransactionAmount(tx.amount, tx.type)}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      handleDelete(tx.id, tx.description || tx.category?.name || 'giao dịch này')
+                    }
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={styles.deleteBtn}
+                  >
+                    <Trash2 size={15} color={colors.chocolateMuted} />
+                  </TouchableOpacity>
+                </View>
               </View>
             ))
           )}
         </MochiCard>
       </ScrollView>
 
-      {/* Add Transaction Modal */}
-      <Modal visible={isModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Thêm giao dịch 📝</Text>
+      {/* Keyboard-Safe Add Transaction Modal */}
+      <KeyboardSafeModal
+        visible={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      >
+        <Text style={styles.modalTitle}>Thêm giao dịch 📝</Text>
 
-            {/* Type selector */}
-            <View style={styles.typeSelector}>
-              <TouchableOpacity
-                style={[styles.typeBtn, type === 'expense' && styles.typeBtnActiveExpense]}
-                onPress={() => setType('expense')}
-              >
-                <Text style={[styles.typeBtnText, type === 'expense' && styles.typeBtnTextActive]}>Khoản chi</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.typeBtn, type === 'income' && styles.typeBtnActiveIncome]}
-                onPress={() => setType('income')}
-              >
-                <Text style={[styles.typeBtnText, type === 'income' && styles.typeBtnTextActive]}>Khoản thu</Text>
-              </TouchableOpacity>
-            </View>
-
-            <MochiInput
-              label="Số tiền (VNĐ)"
-              placeholder="50000"
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="numeric"
-            />
-
-            <MochiInput
-              label="Mô tả"
-              placeholder="Ăn trưa, cafe, mua sắm..."
-              value={description}
-              onChangeText={setDescription}
-            />
-
-            {/* Category selection */}
-            <Text style={styles.fieldLabel}>Danh mục</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
-              {categories
-                .filter(c => c.type === type)
-                .map(c => (
-                  <TouchableOpacity
-                    key={c.id}
-                    style={[styles.catChip, categoryId === c.id && styles.catChipActive]}
-                    onPress={() => setCategoryId(c.id)}
-                  >
-                    <Text>{c.icon}</Text>
-                    <Text style={[styles.catChipText, categoryId === c.id && styles.catChipTextActive]}>{c.name}</Text>
-                  </TouchableOpacity>
-                ))}
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <MochiButton title="Hủy" variant="ghost" onPress={() => setIsModalOpen(false)} style={{ flex: 1 }} />
-              <MochiButton title="Lưu giao dịch" loading={submitting} onPress={handleSubmitTransaction} style={{ flex: 1 }} />
-            </View>
-          </View>
+        {/* Type selector */}
+        <View style={styles.typeSelector}>
+          <TouchableOpacity
+            style={[styles.typeBtn, type === 'expense' && styles.typeBtnActiveExpense]}
+            onPress={() => handleTypeChange('expense')}
+          >
+            <Text style={[styles.typeBtnText, type === 'expense' && styles.typeBtnTextActive]}>
+              Khoản chi 💸
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.typeBtn, type === 'income' && styles.typeBtnActiveIncome]}
+            onPress={() => handleTypeChange('income')}
+          >
+            <Text style={[styles.typeBtnText, type === 'income' && styles.typeBtnTextActive]}>
+              Khoản thu 💰
+            </Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+
+        {/* Amount Input */}
+        <MochiInput
+          label="Số tiền (VNĐ) *"
+          placeholder="50000"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+          autoFocus
+        />
+
+        {/* Description Input */}
+        <MochiInput
+          label="Mô tả"
+          placeholder="Ăn trưa, cafe, mua sắm..."
+          value={description}
+          onChangeText={setDescription}
+        />
+
+        {/* Wallet selection */}
+        {wallets.length > 0 && (
+          <View style={styles.sectionBlock}>
+            <Text style={styles.fieldLabel}>Chọn ví thanh toán</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
+              {wallets.map(w => (
+                <TouchableOpacity
+                  key={w.id}
+                  style={[styles.pillChip, walletId === w.id && styles.pillChipActive]}
+                  onPress={() => setWalletId(w.id)}
+                >
+                  <Text>{w.icon || '🪙'}</Text>
+                  <Text
+                    style={[
+                      styles.pillChipText,
+                      walletId === w.id && styles.pillChipTextActive,
+                    ]}
+                  >
+                    {w.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Category selection */}
+        <View style={styles.sectionBlock}>
+          <Text style={styles.fieldLabel}>Danh mục</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
+            {categories
+              .filter(c => c.type === type)
+              .map(c => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[styles.pillChip, categoryId === c.id && styles.pillChipActive]}
+                  onPress={() => setCategoryId(c.id)}
+                >
+                  <Text>{c.icon}</Text>
+                  <Text
+                    style={[
+                      styles.pillChipText,
+                      categoryId === c.id && styles.pillChipTextActive,
+                    ]}
+                  >
+                    {c.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+          </ScrollView>
+        </View>
+
+        {/* Note Input */}
+        <MochiInput
+          label="Ghi chú (tùy chọn)"
+          placeholder="Chi tiết bổ sung..."
+          value={note}
+          onChangeText={setNote}
+        />
+
+        {/* Actions */}
+        <View style={styles.modalActions}>
+          <MochiButton
+            title="Hủy"
+            variant="ghost"
+            onPress={() => setIsModalOpen(false)}
+            style={{ flex: 1 }}
+          />
+          <MochiButton
+            title="Lưu giao dịch"
+            loading={submitting}
+            disabled={submitting}
+            onPress={handleSubmitTransaction}
+            style={{ flex: 1.5 }}
+          />
+        </View>
+      </KeyboardSafeModal>
     </SafeAreaView>
   )
 }
@@ -241,11 +414,16 @@ const styles = StyleSheet.create({
   },
   addIconBtn: {
     backgroundColor: colors.cheese,
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   balanceCard: {
     padding: spacing.lg,
@@ -253,16 +431,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   balanceLabel: {
-    ...typography.bodySmall,
+    ...typography.caption,
     color: colors.chocolateMuted,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   balanceValue: {
     ...typography.titleLarge,
     fontSize: 28,
     fontWeight: '900',
     color: colors.chocolate,
-    marginVertical: spacing.sm,
+    marginVertical: 6,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -276,18 +454,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  summaryDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: colors.chocolateBorder,
-    marginHorizontal: 8,
+    gap: 10,
   },
   summaryIcon: {
     width: 32,
     height: 32,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -296,23 +468,30 @@ const styles = StyleSheet.create({
     color: colors.chocolateMuted,
   },
   summaryNum: {
-    ...typography.caption,
-    fontWeight: '700',
+    ...typography.bodySmall,
+    fontWeight: '800',
     color: colors.chocolate,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: colors.chocolateBorder,
+    marginHorizontal: spacing.sm,
   },
   sectionTitle: {
     ...typography.titleSmall,
-    color: colors.chocolate,
     fontWeight: '800',
+    color: colors.chocolate,
     marginBottom: spacing.sm,
   },
   walletsScroll: {
     marginBottom: spacing.lg,
   },
   walletCard: {
-    width: 160,
-    marginRight: 10,
+    width: 150,
+    marginRight: spacing.md,
     padding: spacing.md,
+    backgroundColor: colors.white,
   },
   walletHeader: {
     flexDirection: 'row',
@@ -321,12 +500,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   walletIcon: {
-    fontSize: 16,
+    fontSize: 18,
   },
   walletName: {
     ...typography.caption,
     fontWeight: '700',
-    color: colors.chocolate,
+    color: colors.chocolateLight,
   },
   walletBalance: {
     ...typography.bodyMedium,
@@ -340,11 +519,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   txListCard: {
-    padding: spacing.md,
+    padding: 0,
+    backgroundColor: colors.white,
+    overflow: 'hidden',
   },
   emptyState: {
+    padding: spacing.xxl,
     alignItems: 'center',
-    paddingVertical: spacing.xl,
   },
   emptyMascot: {
     fontSize: 36,
@@ -359,7 +540,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.chocolateBorder,
   },
@@ -373,7 +554,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   txDesc: {
-    ...typography.bodyMedium,
+    ...typography.bodySmall,
     fontWeight: '700',
     color: colors.chocolate,
   },
@@ -381,6 +562,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.chocolateMuted,
     marginTop: 2,
+  },
+  txRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   txAmount: {
     ...typography.bodyMedium,
@@ -392,23 +578,15 @@ const styles = StyleSheet.create({
   txExpense: {
     color: colors.peachDark,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(61, 43, 31, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    paddingBottom: 36,
+  deleteBtn: {
+    padding: 4,
   },
   modalTitle: {
     ...typography.titleMedium,
     fontWeight: '900',
     color: colors.chocolate,
     marginBottom: spacing.md,
+    marginTop: 4,
   },
   typeSelector: {
     flexDirection: 'row',
@@ -439,16 +617,19 @@ const styles = StyleSheet.create({
   typeBtnTextActive: {
     color: colors.chocolate,
   },
+  sectionBlock: {
+    marginBottom: 12,
+  },
   fieldLabel: {
     ...typography.bodySmall,
     fontWeight: '700',
     color: colors.chocolateLight,
     marginBottom: 6,
   },
-  catScroll: {
-    marginBottom: spacing.lg,
+  pillScroll: {
+    marginBottom: 4,
   },
-  catChip: {
+  pillChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -457,22 +638,24 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     borderWidth: 1.5,
     borderColor: colors.chocolateBorder,
+    backgroundColor: colors.cream,
     marginRight: 8,
   },
-  catChipActive: {
+  pillChipActive: {
     backgroundColor: colors.cheeseLight,
     borderColor: colors.cheese,
   },
-  catChipText: {
+  pillChipText: {
     ...typography.caption,
     fontWeight: '600',
     color: colors.chocolate,
   },
-  catChipTextActive: {
+  pillChipTextActive: {
     fontWeight: '800',
   },
   modalActions: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: spacing.md,
   },
 })

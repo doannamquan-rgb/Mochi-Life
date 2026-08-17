@@ -1,52 +1,119 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { CheckCircle2, Circle, Flame, Sparkles, Trophy, Plus } from 'lucide-react-native'
+import {
+  CheckCircle2,
+  Circle,
+  Flame,
+  Trophy,
+  Plus,
+  Trash2,
+} from 'lucide-react-native'
 import { useDashboardData } from '../../src/hooks/useDashboardData'
 import { useFinance } from '../../src/hooks/useFinance'
 import { useFitness } from '../../src/hooks/useFitness'
 import { useChinese } from '../../src/hooks/useChinese'
-import { MochiCard } from '../../src/components/ui/MochiCard'
-import { StatCard } from '../../src/components/ui/StatCard'
-import { MochiBadge } from '../../src/components/ui/MochiBadge'
-import { MochiButton } from '../../src/components/ui/MochiButton'
-import { MochiInput } from '../../src/components/ui/MochiInput'
+import {
+  MochiCard,
+  StatCard,
+  MochiButton,
+  MochiInput,
+} from '../../src/components/ui'
 import { formatVNDCompact, getGreeting } from '@mochi/shared'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 
 export default function DashboardScreen() {
   const router = useRouter()
-  const { profile, levelData, checklist, streak, loading, toggleChecklist, addChecklistItem, refetch } = useDashboardData()
-  const { totalBalance, monthExpense } = useFinance()
-  const { latestWeight, currentBMI, weeklyMinutes } = useFitness()
-  const { dueCount, learnedCount } = useChinese()
+  const {
+    profile,
+    levelData,
+    checklist,
+    streak,
+    loading: dashboardLoading,
+    toggleChecklist,
+    addChecklistItem,
+    deleteChecklistItem,
+    refetch: dashboardRefetch,
+  } = useDashboardData()
+
+  const {
+    totalBalance,
+    monthExpense,
+    loading: financeLoading,
+    refetch: financeRefetch,
+  } = useFinance()
+
+  const {
+    latestWeight,
+    currentBMI,
+    weeklyMinutes,
+    loading: fitnessLoading,
+    refetch: fitnessRefetch,
+  } = useFitness()
+
+  const {
+    dueCount,
+    learnedCount,
+    loading: chineseLoading,
+    refetch: chineseRefetch,
+  } = useChinese()
 
   const [refreshing, setRefreshing] = useState(false)
   const [newTodoText, setNewTodoText] = useState('')
   const [isAddingTodo, setIsAddingTodo] = useState(false)
+  const [submittingTodo, setSubmittingTodo] = useState(false)
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await refetch()
+    await Promise.all([
+      dashboardRefetch(),
+      financeRefetch(),
+      fitnessRefetch(),
+      chineseRefetch(),
+    ])
     setRefreshing(false)
   }
 
   const handleAddTodo = async () => {
     if (!newTodoText.trim()) return
-    await addChecklistItem({ item_text: newTodoText.trim(), category: 'other' })
-    setNewTodoText('')
-    setIsAddingTodo(false)
+    setSubmittingTodo(true)
+    try {
+      await addChecklistItem({ item_text: newTodoText.trim(), category: 'other' })
+      setNewTodoText('')
+      setIsAddingTodo(false)
+    } catch (e: any) {
+      Alert.alert('Lỗi', e.message || 'Không thể thêm mục')
+    } finally {
+      setSubmittingTodo(false)
+    }
   }
 
   const greeting = getGreeting()
   const displayName = profile?.display_name || 'Bạn Mochi'
+  const isGlobalLoading =
+    dashboardLoading || financeLoading || fitnessLoading || chineseLoading
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing || loading} onRefresh={onRefresh} colors={[colors.cheese]} />}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing || isGlobalLoading}
+            onRefresh={onRefresh}
+            colors={[colors.cheese]}
+          />
+        }
       >
         {/* Header Profile & Level */}
         <View style={styles.header}>
@@ -58,6 +125,7 @@ export default function DashboardScreen() {
             activeOpacity={0.8}
             onPress={() => router.push('/achievements')}
             style={styles.levelBadge}
+            accessibilityLabel={`Xem thành tích, cấp độ ${levelData?.level || 1}`}
           >
             <Trophy size={16} color={colors.chocolate} />
             <Text style={styles.levelText}>Lv.{levelData?.level || 1}</Text>
@@ -73,7 +141,9 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: `${levelData?.progressPct || 0}%` }]} />
+            <View
+              style={[styles.progressBarFill, { width: `${levelData?.progressPct || 0}%` }]}
+            />
           </View>
         </MochiCard>
 
@@ -92,7 +162,7 @@ export default function DashboardScreen() {
           <StatCard
             title="Cân nặng"
             value={latestWeight > 0 ? `${latestWeight} kg` : '--'}
-            subtitle={currentBMI ? `BMI: ${currentBMI.toFixed(1)}` : 'Chưa có'}
+            subtitle={currentBMI ? `BMI: ${currentBMI.toFixed(1)}` : 'Chưa đặt'}
             icon="⚖️"
             accentColor={colors.peach}
             onPress={() => router.push('/(tabs)/fitness')}
@@ -123,8 +193,9 @@ export default function DashboardScreen() {
           <TouchableOpacity
             style={styles.addBtn}
             onPress={() => setIsAddingTodo(!isAddingTodo)}
+            activeOpacity={0.8}
           >
-            <Plus size={18} color={colors.chocolate} />
+            <Plus size={16} color={colors.chocolate} />
             <Text style={styles.addBtnText}>Thêm mục</Text>
           </TouchableOpacity>
         </View>
@@ -136,6 +207,7 @@ export default function DashboardScreen() {
               value={newTodoText}
               onChangeText={setNewTodoText}
               autoFocus
+              onSubmitEditing={handleAddTodo}
             />
             <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
               <MochiButton
@@ -147,6 +219,8 @@ export default function DashboardScreen() {
               <MochiButton
                 title="Thêm ngay"
                 size="sm"
+                loading={submittingTodo}
+                disabled={submittingTodo}
                 onPress={handleAddTodo}
               />
             </View>
@@ -156,55 +230,46 @@ export default function DashboardScreen() {
         <MochiCard style={styles.checklistCard}>
           {checklist.length === 0 ? (
             <View style={styles.emptyChecklist}>
-              <Text style={styles.emptyMascot}>🐱📝</Text>
-              <Text style={styles.emptyText}>Chưa có mục tiêu nào hôm nay. Bấm 'Thêm mục' để tạo nhé!</Text>
+              <Text style={styles.emptyChecklistText}>
+                Hôm nay bạn chưa có mục tiêu nào. Bấm '+ Thêm mục' để tạo nhé! 🐱✨
+              </Text>
             </View>
           ) : (
             checklist.map(item => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.checklistItem}
-                activeOpacity={0.7}
-                onPress={() => toggleChecklist({ id: item.id, is_completed: !item.is_completed })}
-              >
-                {item.is_completed ? (
-                  <CheckCircle2 size={22} color={colors.mint} />
-                ) : (
-                  <Circle size={22} color={colors.chocolateMuted} />
-                )}
-                <Text
-                  style={[
-                    styles.itemText,
-                    item.is_completed && styles.itemTextCompleted,
-                  ]}
+              <View key={item.id} style={styles.checklistItem}>
+                <TouchableOpacity
+                  style={styles.checkRow}
+                  onPress={() =>
+                    toggleChecklist({ id: item.id, is_completed: !item.is_completed })
+                  }
+                  activeOpacity={0.7}
                 >
-                  {item.item_text}
-                </Text>
-                {item.category && item.category !== 'other' && (
-                  <MochiBadge
-                    label={item.category === 'fitness' ? 'Sức khỏe' : item.category === 'study' ? 'Học tập' : 'Tài chính'}
-                    variant={item.category === 'fitness' ? 'peach' : item.category === 'study' ? 'lavender' : 'mint'}
-                  />
-                )}
-              </TouchableOpacity>
+                  {item.is_completed ? (
+                    <CheckCircle2 size={22} color={colors.mintDark} />
+                  ) : (
+                    <Circle size={22} color={colors.chocolateMuted} />
+                  )}
+                  <Text
+                    style={[
+                      styles.checklistText,
+                      item.is_completed && styles.checklistTextCompleted,
+                    ]}
+                  >
+                    {item.item_text}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => deleteChecklistItem(item.id)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{ padding: 4 }}
+                >
+                  <Trash2 size={15} color={colors.chocolateMuted} />
+                </TouchableOpacity>
+              </View>
             ))
           )}
         </MochiCard>
-
-        {/* AI Assistant Quick Banner */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => router.push('/(tabs)/ai')}
-          style={styles.aiBanner}
-        >
-          <View style={styles.aiBannerContent}>
-            <Sparkles size={24} color={colors.chocolate} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.aiBannerTitle}>Hỏi Mochi AI ✨</Text>
-              <Text style={styles.aiBannerSubtitle}>Nhận lời khuyên thông minh và tóm tắt ngày</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   )
@@ -226,43 +291,47 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   greeting: {
-    ...typography.bodySmall,
+    ...typography.caption,
+    fontWeight: '700',
     color: colors.chocolateMuted,
-    fontWeight: '600',
   },
   userName: {
     ...typography.titleLarge,
-    color: colors.chocolate,
     fontWeight: '900',
+    color: colors.chocolate,
   },
   levelBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cheeseLight,
+    gap: 6,
+    backgroundColor: colors.cheese,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.cheese,
-    gap: 4,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   levelText: {
     ...typography.caption,
-    fontWeight: '800',
+    fontWeight: '900',
     color: colors.chocolate,
   },
   xpCard: {
     padding: spacing.md,
+    backgroundColor: colors.white,
     marginBottom: spacing.lg,
   },
   xpRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   xpLabel: {
     ...typography.caption,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.chocolate,
   },
   xpValue: {
@@ -272,7 +341,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: colors.chocolateBorder,
+    backgroundColor: colors.cream,
     borderRadius: radius.full,
     overflow: 'hidden',
   },
@@ -283,95 +352,81 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.titleSmall,
-    color: colors.chocolate,
     fontWeight: '800',
-    marginBottom: spacing.md,
+    color: colors.chocolate,
+    marginBottom: spacing.sm,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: spacing.xl,
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   gridItem: {
-    width: '48%',
+    width: '47.5%',
   },
   checklistHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: colors.cheeseLight,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    paddingHorizontal: 8,
+    borderRadius: radius.full,
   },
   addBtnText: {
     ...typography.caption,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.chocolate,
   },
   addTodoCard: {
     marginBottom: spacing.md,
     padding: spacing.md,
+    backgroundColor: colors.white,
   },
   checklistCard: {
-    padding: spacing.md,
-    marginBottom: spacing.lg,
+    padding: 0,
+    backgroundColor: colors.white,
+    overflow: 'hidden',
+  },
+  emptyChecklist: {
+    padding: spacing.xl,
+    alignItems: 'center',
+  },
+  emptyChecklistText: {
+    ...typography.bodySmall,
+    color: colors.chocolateMuted,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   checklistItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    justifyContent: 'space-between',
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.chocolateBorder,
-    gap: 10,
   },
-  itemText: {
-    flex: 1,
-    ...typography.bodyMedium,
-    color: colors.chocolate,
-    fontWeight: '600',
-  },
-  itemTextCompleted: {
-    textDecorationLine: 'line-through',
-    color: colors.chocolateMuted,
-  },
-  emptyChecklist: {
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-  },
-  emptyMascot: {
-    fontSize: 32,
-    marginBottom: 6,
-  },
-  emptyText: {
-    ...typography.bodySmall,
-    color: colors.chocolateMuted,
-    textAlign: 'center',
-  },
-  aiBanner: {
-    backgroundColor: colors.cheeseLight,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    borderWidth: 1.5,
-    borderColor: colors.cheese,
-  },
-  aiBannerContent: {
+  checkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
-  aiBannerTitle: {
-    ...typography.bodyMedium,
-    fontWeight: '800',
+  checklistText: {
+    ...typography.bodySmall,
+    fontWeight: '600',
     color: colors.chocolate,
+    flex: 1,
   },
-  aiBannerSubtitle: {
-    ...typography.caption,
-    color: colors.chocolateLight,
+  checklistTextCompleted: {
+    textDecorationLine: 'line-through',
+    color: colors.chocolateMuted,
   },
 })

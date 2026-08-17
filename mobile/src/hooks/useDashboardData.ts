@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
+import { queryKeys } from '../lib/query-keys'
 import { calculateLevelFromXP, calculateStreak, todayString } from '@mochi/shared'
 import type { DailyChecklist, UserProfile } from '@mochi/shared'
 
@@ -8,10 +9,11 @@ export function useDashboardData() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const userId = user?.id
+  const today = todayString()
 
   // 1. Fetch User Profile
   const profileQuery = useQuery({
-    queryKey: ['profile', userId],
+    queryKey: queryKeys.profile(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -26,7 +28,7 @@ export function useDashboardData() {
 
   // 2. Fetch User XP & Level
   const xpQuery = useQuery({
-    queryKey: ['xp', userId],
+    queryKey: queryKeys.xp(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -40,9 +42,8 @@ export function useDashboardData() {
   })
 
   // 3. Fetch Today's Daily Checklist
-  const today = todayString()
   const checklistQuery = useQuery({
-    queryKey: ['checklist', userId, today],
+    queryKey: queryKeys.checklist(userId, today),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -51,6 +52,7 @@ export function useDashboardData() {
         .eq('user_id', userId!)
         .eq('checklist_date', today)
         .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
       if (error) throw error
       return (data || []) as DailyChecklist[]
     },
@@ -58,7 +60,7 @@ export function useDashboardData() {
 
   // 4. Fetch Study Streak
   const streakQuery = useQuery({
-    queryKey: ['study-streak', userId],
+    queryKey: queryKeys.streak(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -75,25 +77,43 @@ export function useDashboardData() {
   // 5. Toggle Checklist Mutation
   const toggleChecklistMutation = useMutation({
     mutationFn: async ({ id, is_completed }: { id: string; is_completed: boolean }) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
       const { error } = await supabase
         .from('daily_checklists')
         .update({ is_completed, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .eq('user_id', userId!)
+        .eq('user_id', userId)
       if (error) throw error
+
+      if (is_completed) {
+        await supabase.from('user_xp_logs').insert({
+          user_id: userId,
+          amount: 5,
+          action_type: 'checklist_completed',
+          reference_id: id,
+        })
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklist', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.checklist(userId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.xp(userId) })
     },
   })
 
   // 6. Add Checklist Item Mutation
   const addChecklistMutation = useMutation({
-    mutationFn: async ({ item_text, category }: { item_text: string; category: DailyChecklist['category'] }) => {
+    mutationFn: async ({
+      item_text,
+      category = 'other',
+    }: {
+      item_text: string
+      category?: DailyChecklist['category']
+    }) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
       const { error } = await supabase.from('daily_checklists').insert({
-        user_id: userId!,
+        user_id: userId,
         checklist_date: today,
-        item_text,
+        item_text: item_text.trim(),
         category,
         is_completed: false,
         sort_order: 99,
@@ -101,7 +121,23 @@ export function useDashboardData() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['checklist', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.checklist(userId) })
+    },
+  })
+
+  // 7. Delete Checklist Item Mutation
+  const deleteChecklistMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
+      const { error } = await supabase
+        .from('daily_checklists')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.checklist(userId) })
     },
   })
 
@@ -113,11 +149,14 @@ export function useDashboardData() {
     loading: profileQuery.isLoading || xpQuery.isLoading || checklistQuery.isLoading,
     toggleChecklist: toggleChecklistMutation.mutateAsync,
     addChecklistItem: addChecklistMutation.mutateAsync,
-    refetch: () => {
-      profileQuery.refetch()
-      xpQuery.refetch()
-      checklistQuery.refetch()
-      streakQuery.refetch()
+    deleteChecklistItem: deleteChecklistMutation.mutateAsync,
+    refetch: async () => {
+      await Promise.all([
+        profileQuery.refetch(),
+        xpQuery.refetch(),
+        checklistQuery.refetch(),
+        streakQuery.refetch(),
+      ])
     },
   }
 }

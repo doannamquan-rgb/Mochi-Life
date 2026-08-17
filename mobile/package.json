@@ -1,6 +1,6 @@
 {
   "name": "mobile",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -9,6 +9,10 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "doctor": "npx expo-doctor",
+    "update:preview": "eas update --channel preview",
+    "update:production": "eas update --channel production",
+    "build:preview": "eas build -p android --profile preview",
+    "build:production": "eas build -p android --profile production",
     "eas-build-pre-install": "npm install --package-lock-only"
   },
   "expo": {

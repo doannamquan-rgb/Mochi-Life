@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } 
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../src/lib/supabase'
 import { useAuth } from '../src/lib/auth-context'
+import { queryKeys } from '../src/lib/query-keys'
 import { MASTER_ACHIEVEMENTS } from '@mochi/shared'
 import { MochiCard } from '../src/components/ui/MochiCard'
 import { MochiBadge } from '../src/components/ui/MochiBadge'
@@ -14,7 +15,7 @@ export default function AchievementsScreen() {
   const [activeCategory, setActiveCategory] = useState<'all' | 'fitness' | 'study' | 'expense' | 'general'>('all')
 
   const { data: unlockedData, isLoading, refetch } = useQuery({
-    queryKey: ['user-achievements', userId],
+    queryKey: queryKeys.achievements(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase

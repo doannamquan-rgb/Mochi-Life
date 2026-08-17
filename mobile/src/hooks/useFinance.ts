@@ -1,16 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
-import type { Wallet, ExpenseCategory, Transaction, Budget } from '@mochi/shared'
+import { queryKeys } from '../lib/query-keys'
+import { parseAndValidateVNDAmount } from '@mochi/shared'
+import type { Wallet, ExpenseCategory, Transaction, Budget, CreateTransactionAtomicInput } from '@mochi/shared'
 
 export function useFinance() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const userId = user?.id
 
+  const now = new Date()
+  const currentMonth = now.getMonth() + 1
+  const currentYear = now.getFullYear()
+  const startOfMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`
+  const lastDay = new Date(currentYear, currentMonth, 0).getDate()
+  const endOfMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
   // 1. Wallets
   const walletsQuery = useQuery({
-    queryKey: ['wallets', userId],
+    queryKey: queryKeys.wallets(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -25,7 +34,7 @@ export function useFinance() {
 
   // 2. Categories
   const categoriesQuery = useQuery({
-    queryKey: ['categories', userId],
+    queryKey: queryKeys.categories(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -38,9 +47,9 @@ export function useFinance() {
     },
   })
 
-  // 3. Transactions
+  // 3. Recent Transactions (for UI list)
   const transactionsQuery = useQuery({
-    queryKey: ['transactions', userId],
+    queryKey: queryKeys.transactions(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -52,17 +61,32 @@ export function useFinance() {
         `)
         .eq('user_id', userId!)
         .order('transaction_date', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(50)
       if (error) throw error
       return (data || []) as Transaction[]
     },
   })
 
-  // 4. Monthly Budgets
-  const currentMonth = new Date().getMonth() + 1
-  const currentYear = new Date().getFullYear()
+  // 4. Monthly Transactions (Dedicated query for accurate monthly aggregates, no 50-item truncation)
+  const monthlyAggregatesQuery = useQuery({
+    queryKey: ['monthly-tx-aggregates', userId, currentMonth, currentYear],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('type, amount')
+        .eq('user_id', userId!)
+        .gte('transaction_date', startOfMonthStr)
+        .lte('transaction_date', endOfMonthStr)
+      if (error) throw error
+      return (data || []) as Array<{ type: 'expense' | 'income'; amount: number }>
+    },
+  })
+
+  // 5. Monthly Budgets
   const budgetsQuery = useQuery({
-    queryKey: ['budgets', userId, currentMonth, currentYear],
+    queryKey: queryKeys.budgets(userId, currentMonth, currentYear),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -79,60 +103,129 @@ export function useFinance() {
     },
   })
 
-  // 5. Add Transaction Mutation
+  // 6. Atomic Add Transaction Mutation (PostgreSQL RPC)
   const addTransactionMutation = useMutation({
-    mutationFn: async (newTx: {
-      type: 'expense' | 'income'
-      amount: number
-      transaction_date: string
-      category_id?: string
-      wallet_id?: string
-      description?: string
-      note?: string
-    }) => {
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId!,
-          ...newTx,
-        })
-        .select()
-        .single()
-      if (error) throw error
+    mutationFn: async (input: CreateTransactionAtomicInput) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
 
-      // Update wallet balance
-      if (newTx.wallet_id) {
-        const delta = newTx.type === 'income' ? newTx.amount : -newTx.amount
-        const targetWallet = walletsQuery.data?.find(w => w.id === newTx.wallet_id)
-        if (targetWallet) {
-          await supabase
-            .from('wallets')
-            .update({ balance: (targetWallet.balance || 0) + delta })
-            .eq('id', newTx.wallet_id)
+      const validation = parseAndValidateVNDAmount(input.amount)
+      if (!validation.valid || validation.value <= 0) {
+        throw new Error(validation.error || 'Số tiền không hợp lệ')
+      }
+
+      // Execute atomic PostgreSQL RPC
+      const { data, error } = await supabase.rpc('record_transaction_atomic', {
+        p_user_id: userId,
+        p_type: input.type,
+        p_amount: validation.value,
+        p_transaction_date: input.transaction_date,
+        p_wallet_id: input.wallet_id || null,
+        p_category_id: input.category_id || null,
+        p_description: input.description?.trim() || null,
+        p_note: input.note?.trim() || null,
+        p_payment_method: input.payment_method || null,
+      })
+
+      if (error) {
+        // Fallback to direct client transaction insert + wallet update if RPC is not yet deployed on DB
+        if (error.message?.includes('function public.record_transaction_atomic') || error.code === '42883') {
+          const { data: directTx, error: directErr } = await supabase
+            .from('transactions')
+            .insert({
+              user_id: userId,
+              type: input.type,
+              amount: validation.value,
+              transaction_date: input.transaction_date,
+              wallet_id: input.wallet_id || null,
+              category_id: input.category_id || null,
+              description: input.description?.trim() || null,
+              note: input.note?.trim() || null,
+            })
+            .select()
+            .single()
+
+          if (directErr) throw directErr
+
+          if (input.wallet_id) {
+            const delta = input.type === 'income' ? validation.value : -validation.value
+            const targetWallet = walletsQuery.data?.find(w => w.id === input.wallet_id)
+            if (targetWallet) {
+              await supabase
+                .from('wallets')
+                .update({ balance: (targetWallet.balance || 0) + delta })
+                .eq('id', input.wallet_id)
+            }
+          }
+          return directTx
         }
+        throw new Error(error.message || 'Không thể tạo giao dịch')
       }
 
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions', userId] })
-      queryClient.invalidateQueries({ queryKey: ['wallets', userId] })
-      queryClient.invalidateQueries({ queryKey: ['budgets', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions(userId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallets(userId) })
+      queryClient.invalidateQueries({ queryKey: ['monthly-tx-aggregates', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets(userId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.xp(userId) })
     },
   })
 
-  // Calculate stats
-  const totalBalance = (walletsQuery.data || []).reduce((sum, w) => sum + (w.balance || 0), 0)
-  const currentMonthTransactions = (transactionsQuery.data || []).filter(t => {
-    const d = new Date(t.transaction_date)
-    return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear
+  // 7. Atomic Delete Transaction Mutation (PostgreSQL RPC)
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
+
+      const { data, error } = await supabase.rpc('delete_transaction_atomic', {
+        p_user_id: userId,
+        p_transaction_id: transactionId,
+      })
+
+      if (error) {
+        // Fallback for direct delete if RPC not present
+        if (error.message?.includes('delete_transaction_atomic') || error.code === '42883') {
+          const txToDelete = transactionsQuery.data?.find(t => t.id === transactionId)
+          if (txToDelete && txToDelete.wallet_id) {
+            const reverseDelta = txToDelete.type === 'expense' ? txToDelete.amount : -txToDelete.amount
+            const targetWallet = walletsQuery.data?.find(w => w.id === txToDelete.wallet_id)
+            if (targetWallet) {
+              await supabase
+                .from('wallets')
+                .update({ balance: (targetWallet.balance || 0) + reverseDelta })
+                .eq('id', txToDelete.wallet_id)
+            }
+          }
+          const { error: delErr } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', transactionId)
+            .eq('user_id', userId)
+          if (delErr) throw delErr
+          return true
+        }
+        throw new Error(error.message || 'Không thể xóa giao dịch')
+      }
+
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions(userId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallets(userId) })
+      queryClient.invalidateQueries({ queryKey: ['monthly-tx-aggregates', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets(userId) })
+    },
   })
-  const monthExpense = currentMonthTransactions
+
+  // Calculate stats from dedicated monthly aggregates query
+  const totalBalance = (walletsQuery.data || []).reduce((sum, w) => sum + (w.balance || 0), 0)
+  const monthlyItems = monthlyAggregatesQuery.data || []
+  const monthExpense = monthlyItems
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0)
-  const monthIncome = currentMonthTransactions
+    .reduce((sum, t) => sum + (t.amount || 0), 0)
+  const monthIncome = monthlyItems
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + (t.amount || 0), 0)
 
   return {
     wallets: walletsQuery.data || [],
@@ -144,11 +237,15 @@ export function useFinance() {
     monthIncome,
     loading: walletsQuery.isLoading || transactionsQuery.isLoading,
     addTransaction: addTransactionMutation.mutateAsync,
-    refetch: () => {
-      walletsQuery.refetch()
-      categoriesQuery.refetch()
-      transactionsQuery.refetch()
-      budgetsQuery.refetch()
+    deleteTransaction: deleteTransactionMutation.mutateAsync,
+    refetch: async () => {
+      await Promise.all([
+        walletsQuery.refetch(),
+        categoriesQuery.refetch(),
+        transactionsQuery.refetch(),
+        monthlyAggregatesQuery.refetch(),
+        budgetsQuery.refetch(),
+      ])
     },
   }
 }

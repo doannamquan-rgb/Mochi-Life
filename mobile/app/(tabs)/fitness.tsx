@@ -1,18 +1,52 @@
 import React, { useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Modal, Alert } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Flame, Activity } from 'lucide-react-native'
+import { Flame, Activity, ChevronRight } from 'lucide-react-native'
+import { useRouter } from 'expo-router'
 import { useFitness } from '../../src/hooks/useFitness'
-import { MochiCard } from '../../src/components/ui/MochiCard'
-import { MochiButton } from '../../src/components/ui/MochiButton'
-import { MochiInput } from '../../src/components/ui/MochiInput'
-import { MochiBadge } from '../../src/components/ui/MochiBadge'
-import { StatCard } from '../../src/components/ui/StatCard'
-import { getBMICategory, EXERCISE_TYPES, formatDate, formatDuration } from '@mochi/shared'
+import { useMochiReaction } from '../../src/hooks/useMochiReaction'
+import {
+  MochiCard,
+  MochiButton,
+  MochiInput,
+  MochiBadge,
+  StatCard,
+  KeyboardSafeModal,
+} from '../../src/components/ui'
+import {
+  getBMICategory,
+  EXERCISE_TYPES,
+  formatDate,
+  formatDuration,
+} from '@mochi/shared'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 
 export default function FitnessScreen() {
-  const { weightGoal, exerciseLogs, latestWeight, currentBMI, weeklyMinutes, weeklyCalories, weeklySessions, loading, addWeightLog, addExerciseLog, refetch } = useFitness()
+  const router = useRouter()
+  const {
+    weightGoal,
+    exerciseLogs,
+    latestWeight,
+    heightCm,
+    currentBMI,
+    weeklyMinutes,
+    weeklyCalories,
+    weeklySessions,
+    loading,
+    addWeightLog,
+    addExerciseLog,
+    refetch,
+  } = useFitness()
+
+  const { triggerReaction } = useMochiReaction()
   const [refreshing, setRefreshing] = useState(false)
 
   // Weight Modal State
@@ -39,9 +73,9 @@ export default function FitnessScreen() {
   const bmiInfo = currentBMI ? getBMICategory(currentBMI) : null
 
   const handleSaveWeight = async () => {
-    const val = parseFloat(newWeight)
-    if (!val || val <= 0) {
-      Alert.alert('Thông báo', 'Vui lòng nhập cân nặng hợp lệ')
+    const val = parseFloat(newWeight.replace(',', '.'))
+    if (!val || val <= 0 || isNaN(val)) {
+      Alert.alert('Thông báo', 'Vui lòng nhập cân nặng hợp lệ (> 0 kg)')
       return
     }
 
@@ -49,11 +83,16 @@ export default function FitnessScreen() {
     try {
       await addWeightLog({
         weight: val,
-        waist_cm: parseFloat(newWaist) || undefined,
+        waist_cm: parseFloat(newWaist.replace(',', '.')) || undefined,
         note: weightNote.trim() || undefined,
       })
       setIsWeightModalOpen(false)
       setNewWeight('')
+      setNewWaist('')
+      setWeightNote('')
+
+      // Trigger AI reaction
+      triggerReaction('weight_logged')
     } catch (e: any) {
       Alert.alert('Lỗi', e.message || 'Không thể lưu cân nặng')
     } finally {
@@ -62,9 +101,9 @@ export default function FitnessScreen() {
   }
 
   const handleSaveExercise = async () => {
-    const dur = parseInt(duration)
-    if (!dur || dur <= 0) {
-      Alert.alert('Thông báo', 'Vui lòng nhập thời gian tập luyện')
+    const dur = parseInt(duration, 10)
+    if (!dur || dur <= 0 || isNaN(dur)) {
+      Alert.alert('Thông báo', 'Vui lòng nhập thời gian tập luyện (> 0 phút)')
       return
     }
 
@@ -77,6 +116,10 @@ export default function FitnessScreen() {
         note: exerciseNote.trim() || undefined,
       })
       setIsExerciseModalOpen(false)
+      setExerciseNote('')
+
+      // Trigger AI reaction
+      triggerReaction('exercise_logged')
     } catch (e: any) {
       Alert.alert('Lỗi', e.message || 'Không thể lưu bài tập')
     } finally {
@@ -88,7 +131,14 @@ export default function FitnessScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing || loading} onRefresh={onRefresh} colors={[colors.cheese]} />}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing || loading}
+            onRefresh={onRefresh}
+            colors={[colors.cheese]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -96,17 +146,35 @@ export default function FitnessScreen() {
         </View>
 
         {/* Weight & BMI Card */}
-        <MochiCard style={styles.weightCard}>
+        <MochiCard style={styles.weightCard} accentColor={colors.peach}>
           <View style={styles.weightHeader}>
             <View>
               <Text style={styles.cardSub}>Cân nặng hiện tại</Text>
-              <Text style={styles.weightNum}>{latestWeight > 0 ? `${latestWeight} kg` : '--'}</Text>
+              <Text style={styles.weightNum}>
+                {latestWeight > 0 ? `${latestWeight} kg` : '--'}
+              </Text>
             </View>
-            {bmiInfo && (
+
+            {bmiInfo ? (
               <View style={styles.bmiContainer}>
                 <Text style={styles.bmiNum}>BMI {currentBMI?.toFixed(1)}</Text>
-                <MochiBadge label={bmiInfo.label} color={colors.white} backgroundColor={bmiInfo.color} />
+                <MochiBadge
+                  label={bmiInfo.label}
+                  color={colors.white}
+                  backgroundColor={bmiInfo.color}
+                />
               </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.noHeightPrompt}
+                onPress={() => router.push('/(tabs)/settings')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.noHeightText}>
+                  {heightCm ? 'BMI chưa sẵn sàng' : 'Chưa có chiều cao'}
+                </Text>
+                <ChevronRight size={14} color={colors.chocolateMuted} />
+              </TouchableOpacity>
             )}
           </View>
 
@@ -127,7 +195,7 @@ export default function FitnessScreen() {
         </MochiCard>
 
         {/* Weekly Stats Grid */}
-        <Text style={styles.sectionTitle}>Tập luyện tuần này 🔥</Text>
+        <Text style={styles.sectionTitle}>Tập luyện 7 ngày qua 🔥</Text>
         <View style={styles.grid}>
           <StatCard
             title="Thời gian tập"
@@ -140,7 +208,7 @@ export default function FitnessScreen() {
           <StatCard
             title="Calo đốt cháy"
             value={`${weeklyCalories} kcal`}
-            subtitle="Ước tính calo"
+            subtitle="Ước tính tiêu hao"
             icon={<Flame size={20} color={colors.peachDark} />}
             accentColor={colors.peach}
             style={styles.gridItem}
@@ -150,32 +218,55 @@ export default function FitnessScreen() {
         {/* Log Exercise Action */}
         <View style={styles.logExerciseRow}>
           <Text style={styles.sectionTitle}>Lịch sử luyện tập 🏃</Text>
-          <MochiButton title="+ Ghi bài tập" size="sm" onPress={() => setIsExerciseModalOpen(true)} />
+          <MochiButton
+            title="+ Ghi bài tập"
+            size="sm"
+            onPress={() => setIsExerciseModalOpen(true)}
+          />
         </View>
 
         <MochiCard style={styles.listCard}>
           {exerciseLogs.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyMascot}>🐱🏋️</Text>
-              <Text style={styles.emptyText}>Chưa có buổi tập nào. Bấm '+ Ghi bài tập' để bắt đầu nhé!</Text>
+              <Text style={styles.emptyText}>
+                Chưa có buổi tập nào. Bấm '+ Ghi bài tập' để bắt đầu nhé!
+              </Text>
             </View>
           ) : (
             exerciseLogs.map(log => {
-              const info = EXERCISE_TYPES[log.exercise_type] || { label: log.exercise_type, icon: '⚡' }
+              const info = EXERCISE_TYPES[log.exercise_type] || {
+                label: log.exercise_type,
+                icon: '⚡',
+              }
               return (
                 <View key={log.id} style={styles.logItem}>
                   <View style={styles.logLeft}>
                     <Text style={styles.logIcon}>{info.icon}</Text>
                     <View>
                       <Text style={styles.logTitle}>{info.label}</Text>
-                      <Text style={styles.logDate}>{formatDate(log.log_date)} • {log.duration_minutes} phút</Text>
+                      <Text style={styles.logDate}>
+                        {formatDate(log.log_date)} • {log.duration_minutes} phút
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.logRight}>
                     <Text style={styles.calText}>+{log.calories_burned || 0} kcal</Text>
                     <MochiBadge
-                      label={log.intensity === 'high' ? 'Cao' : log.intensity === 'light' ? 'Nhẹ' : 'Vừa'}
-                      variant={log.intensity === 'high' ? 'peach' : log.intensity === 'light' ? 'mint' : 'cheese'}
+                      label={
+                        log.intensity === 'high'
+                          ? 'Cao'
+                          : log.intensity === 'light'
+                          ? 'Nhẹ'
+                          : 'Vừa'
+                      }
+                      variant={
+                        log.intensity === 'high'
+                          ? 'peach'
+                          : log.intensity === 'light'
+                          ? 'mint'
+                          : 'cheese'
+                      }
                     />
                   </View>
                 </View>
@@ -185,97 +276,129 @@ export default function FitnessScreen() {
         </MochiCard>
       </ScrollView>
 
-      {/* Log Weight Modal */}
-      <Modal visible={isWeightModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Ghi nhận cân nặng ⚖️</Text>
-            <MochiInput
-              label="Cân nặng (kg)"
-              placeholder="65.5"
-              value={newWeight}
-              onChangeText={setNewWeight}
-              keyboardType="numeric"
-              autoFocus
-            />
-            <MochiInput
-              label="Vòng eo (cm - tùy chọn)"
-              placeholder="75"
-              value={newWaist}
-              onChangeText={setNewWaist}
-              keyboardType="numeric"
-            />
-            <MochiInput
-              label="Ghi chú"
-              placeholder="Cảm xúc, sau ăn sáng..."
-              value={weightNote}
-              onChangeText={setWeightNote}
-            />
-            <View style={styles.modalActions}>
-              <MochiButton title="Hủy" variant="ghost" onPress={() => setIsWeightModalOpen(false)} style={{ flex: 1 }} />
-              <MochiButton title="Lưu lại" loading={submittingWeight} onPress={handleSaveWeight} style={{ flex: 1 }} />
-            </View>
-          </View>
+      {/* Keyboard-Safe Log Weight Modal */}
+      <KeyboardSafeModal
+        visible={isWeightModalOpen}
+        onClose={() => setIsWeightModalOpen(false)}
+      >
+        <Text style={styles.modalTitle}>Ghi nhận cân nặng ⚖️</Text>
+        <MochiInput
+          label="Cân nặng (kg) *"
+          placeholder="65.5"
+          value={newWeight}
+          onChangeText={setNewWeight}
+          keyboardType="numeric"
+          autoFocus
+        />
+        <MochiInput
+          label="Vòng eo (cm - tùy chọn)"
+          placeholder="75"
+          value={newWaist}
+          onChangeText={setNewWaist}
+          keyboardType="numeric"
+        />
+        <MochiInput
+          label="Ghi chú"
+          placeholder="Cảm xúc, sau ăn sáng, sau tập..."
+          value={weightNote}
+          onChangeText={setWeightNote}
+        />
+        <View style={styles.modalActions}>
+          <MochiButton
+            title="Hủy"
+            variant="ghost"
+            onPress={() => setIsWeightModalOpen(false)}
+            style={{ flex: 1 }}
+          />
+          <MochiButton
+            title="Lưu lại"
+            loading={submittingWeight}
+            disabled={submittingWeight}
+            onPress={handleSaveWeight}
+            style={{ flex: 1.5 }}
+          />
         </View>
-      </Modal>
+      </KeyboardSafeModal>
 
-      {/* Log Exercise Modal */}
-      <Modal visible={isExerciseModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Ghi nhận bài tập 🏃</Text>
+      {/* Keyboard-Safe Log Exercise Modal */}
+      <KeyboardSafeModal
+        visible={isExerciseModalOpen}
+        onClose={() => setIsExerciseModalOpen(false)}
+      >
+        <Text style={styles.modalTitle}>Ghi nhận bài tập 🏃</Text>
 
-            <Text style={styles.fieldLabel}>Loại bài tập</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {Object.entries(EXERCISE_TYPES).map(([k, v]) => (
-                <TouchableOpacity
-                  key={k}
-                  style={[styles.typeChip, selectedExercise === k && styles.typeChipActive]}
-                  onPress={() => setSelectedExercise(k)}
-                >
-                  <Text>{v.icon}</Text>
-                  <Text style={[styles.typeChipText, selectedExercise === k && styles.typeChipTextActive]}>{v.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        <Text style={styles.fieldLabel}>Loại bài tập</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll}>
+          {Object.entries(EXERCISE_TYPES).map(([k, v]) => (
+            <TouchableOpacity
+              key={k}
+              style={[styles.pillChip, selectedExercise === k && styles.pillChipActive]}
+              onPress={() => setSelectedExercise(k)}
+            >
+              <Text>{v.icon}</Text>
+              <Text
+                style={[
+                  styles.pillChipText,
+                  selectedExercise === k && styles.pillChipTextActive,
+                ]}
+              >
+                {v.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-            <MochiInput
-              label="Thời gian tập (phút)"
-              placeholder="30"
-              value={duration}
-              onChangeText={setDuration}
-              keyboardType="numeric"
-            />
+        <MochiInput
+          label="Thời gian tập (phút) *"
+          placeholder="30"
+          value={duration}
+          onChangeText={setDuration}
+          keyboardType="numeric"
+        />
 
-            <Text style={styles.fieldLabel}>Cường độ</Text>
-            <View style={styles.intensityRow}>
-              {(['light', 'moderate', 'high'] as const).map(lvl => (
-                <TouchableOpacity
-                  key={lvl}
-                  style={[styles.intensityBtn, intensity === lvl && styles.intensityBtnActive]}
-                  onPress={() => setIntensity(lvl)}
-                >
-                  <Text style={[styles.intensityText, intensity === lvl && styles.intensityTextActive]}>
-                    {lvl === 'light' ? 'Nhẹ' : lvl === 'moderate' ? 'Vừa' : 'Cao'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <MochiInput
-              label="Ghi chú"
-              placeholder="Cảm giác sau buổi tập..."
-              value={exerciseNote}
-              onChangeText={setExerciseNote}
-            />
-
-            <View style={styles.modalActions}>
-              <MochiButton title="Hủy" variant="ghost" onPress={() => setIsExerciseModalOpen(false)} style={{ flex: 1 }} />
-              <MochiButton title="Lưu bài tập" loading={submittingExercise} onPress={handleSaveExercise} style={{ flex: 1 }} />
-            </View>
-          </View>
+        <Text style={styles.fieldLabel}>Cường độ</Text>
+        <View style={styles.intensityRow}>
+          {(['light', 'moderate', 'high'] as const).map(lvl => (
+            <TouchableOpacity
+              key={lvl}
+              style={[styles.intensityBtn, intensity === lvl && styles.intensityBtnActive]}
+              onPress={() => setIntensity(lvl)}
+            >
+              <Text
+                style={[
+                  styles.intensityText,
+                  intensity === lvl && styles.intensityTextActive,
+                ]}
+              >
+                {lvl === 'light' ? 'Nhẹ' : lvl === 'moderate' ? 'Vừa' : 'Cao'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      </Modal>
+
+        <MochiInput
+          label="Ghi chú"
+          placeholder="Cảm giác sau buổi tập, cự ly..."
+          value={exerciseNote}
+          onChangeText={setExerciseNote}
+        />
+
+        <View style={styles.modalActions}>
+          <MochiButton
+            title="Hủy"
+            variant="ghost"
+            onPress={() => setIsExerciseModalOpen(false)}
+            style={{ flex: 1 }}
+          />
+          <MochiButton
+            title="Lưu bài tập"
+            loading={submittingExercise}
+            disabled={submittingExercise}
+            onPress={handleSaveExercise}
+            style={{ flex: 1.5 }}
+          />
+        </View>
+      </KeyboardSafeModal>
     </SafeAreaView>
   )
 }
@@ -308,16 +431,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardSub: {
-    ...typography.bodySmall,
+    ...typography.caption,
+    fontWeight: '700',
     color: colors.chocolateMuted,
-    fontWeight: '600',
   },
   weightNum: {
     ...typography.titleLarge,
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
     color: colors.chocolate,
-    marginTop: 2,
+    marginTop: 4,
   },
   bmiContainer: {
     alignItems: 'flex-end',
@@ -328,10 +451,26 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.chocolate,
   },
+  noHeightPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.cream,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.chocolateBorder,
+  },
+  noHeightText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.chocolateMuted,
+  },
   goalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.chocolateBorder,
@@ -339,16 +478,17 @@ const styles = StyleSheet.create({
   goalText: {
     ...typography.caption,
     color: colors.chocolateLight,
+    fontWeight: '600',
   },
   sectionTitle: {
     ...typography.titleSmall,
-    color: colors.chocolate,
     fontWeight: '800',
+    color: colors.chocolate,
     marginBottom: spacing.sm,
   },
   grid: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     marginBottom: spacing.lg,
   },
   gridItem: {
@@ -356,16 +496,18 @@ const styles = StyleSheet.create({
   },
   logExerciseRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
   listCard: {
-    padding: spacing.md,
+    padding: 0,
+    backgroundColor: colors.white,
+    overflow: 'hidden',
   },
   emptyState: {
+    padding: spacing.xxl,
     alignItems: 'center',
-    paddingVertical: spacing.xl,
   },
   emptyMascot: {
     fontSize: 36,
@@ -380,7 +522,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    padding: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.chocolateBorder,
   },
@@ -388,13 +530,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    flex: 1,
   },
   logIcon: {
-    fontSize: 24,
+    fontSize: 22,
   },
   logTitle: {
-    ...typography.bodyMedium,
+    ...typography.bodySmall,
     fontWeight: '700',
     color: colors.chocolate,
   },
@@ -412,23 +553,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.peachDark,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(61, 43, 31, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.xl,
-    paddingBottom: 36,
-  },
   modalTitle: {
     ...typography.titleMedium,
     fontWeight: '900',
     color: colors.chocolate,
     marginBottom: spacing.md,
+    marginTop: 4,
   },
   fieldLabel: {
     ...typography.bodySmall,
@@ -436,10 +566,10 @@ const styles = StyleSheet.create({
     color: colors.chocolateLight,
     marginBottom: 6,
   },
-  typeScroll: {
+  pillScroll: {
     marginBottom: spacing.md,
   },
-  typeChip: {
+  pillChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -448,18 +578,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     borderWidth: 1.5,
     borderColor: colors.chocolateBorder,
+    backgroundColor: colors.cream,
     marginRight: 8,
   },
-  typeChipActive: {
+  pillChipActive: {
     backgroundColor: colors.cheeseLight,
     borderColor: colors.cheese,
   },
-  typeChipText: {
+  pillChipText: {
     ...typography.caption,
     fontWeight: '600',
     color: colors.chocolate,
   },
-  typeChipTextActive: {
+  pillChipTextActive: {
     fontWeight: '800',
   },
   intensityRow: {
@@ -469,22 +600,24 @@ const styles = StyleSheet.create({
   },
   intensityBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.chocolateBorder,
+    backgroundColor: colors.cream,
     alignItems: 'center',
   },
   intensityBtnActive: {
-    backgroundColor: colors.cheeseLight,
-    borderColor: colors.cheese,
+    backgroundColor: colors.cheese,
+    borderColor: colors.chocolate,
   },
   intensityText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.chocolateMuted,
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.chocolateLight,
   },
   intensityTextActive: {
+    fontWeight: '800',
     color: colors.chocolate,
   },
   modalActions: {

@@ -1,36 +1,76 @@
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
+import { queryKeys } from '../lib/query-keys'
 import { calculateNextReview, isDueForReview, todayString } from '@mochi/shared'
-import type { HskCourse, HskLesson, HskVocabulary, ReviewRating } from '@mochi/shared'
+import type { HskCourse, HskLesson, HskVocabulary, ReviewRating, UserProfile } from '@mochi/shared'
 
 export function useChinese() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const userId = user?.id
 
-  // 1. All Courses
+  // 1. User Profile (to get source of truth active_hsk_course_id)
+  const profileQuery = useQuery({
+    queryKey: queryKeys.profile(userId),
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId!)
+        .maybeSingle()
+      if (error) throw error
+      return data as UserProfile | null
+    },
+  })
+
+  // 2. All Courses
   const coursesQuery = useQuery({
-    queryKey: ['hsk-courses', userId],
+    queryKey: queryKeys.hskCourses(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('hsk_courses')
         .select('*')
         .eq('user_id', userId!)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
       if (error) throw error
       return (data || []) as HskCourse[]
     },
   })
 
-  // 2. Active Course
-  const activeCourse = coursesQuery.data?.[0] || null
+  const courses = coursesQuery.data || []
+  const preferredCourseId = profileQuery.data?.active_hsk_course_id
+
+  // Resolve active course: profile preferred -> first course -> null
+  let activeCourse: HskCourse | null = null
+  if (preferredCourseId) {
+    activeCourse = courses.find(c => c.id === preferredCourseId) || null
+  }
+  if (!activeCourse && courses.length > 0) {
+    activeCourse = courses[0]
+  }
+
   const activeCourseId = activeCourse?.id
+
+  // Auto-sync fallback to user profile if profile has no active course
+  useEffect(() => {
+    if (userId && activeCourse && !profileQuery.data?.active_hsk_course_id) {
+      supabase
+        .from('user_profiles')
+        .update({ active_hsk_course_id: activeCourse.id })
+        .eq('user_id', userId)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.profile(userId) })
+        })
+    }
+  }, [userId, activeCourse, profileQuery.data?.active_hsk_course_id, queryClient])
 
   // 3. Lessons in Active Course
   const lessonsQuery = useQuery({
-    queryKey: ['hsk-lessons', userId, activeCourseId],
+    queryKey: queryKeys.hskLessons(userId, activeCourseId),
     enabled: !!userId && !!activeCourseId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -44,9 +84,9 @@ export function useChinese() {
     },
   })
 
-  // 4. Vocabulary in Active Course
+  // 4. Vocabulary in Active Course (with fallback for legacy rows where course_id is NULL)
   const vocabularyQuery = useQuery({
-    queryKey: ['hsk-vocab', userId, activeCourseId],
+    queryKey: queryKeys.hskVocabulary(userId, activeCourseId),
     enabled: !!userId && !!activeCourseId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -56,11 +96,43 @@ export function useChinese() {
         .eq('course_id', activeCourseId!)
         .order('created_at', { ascending: true })
       if (error) throw error
-      return (data || []) as HskVocabulary[]
+
+      if (data && data.length > 0) {
+        return data as HskVocabulary[]
+      }
+
+      // Fallback query for legacy vocabulary rows where course_id was not populated
+      const { data: legacyData, error: legacyErr } = await supabase
+        .from('hsk_vocabulary')
+        .select('*')
+        .eq('user_id', userId!)
+        .order('created_at', { ascending: true })
+      if (legacyErr) throw legacyErr
+      return (legacyData || []) as HskVocabulary[]
     },
   })
 
-  // 5. Submit Vocabulary Review (SM-2 Spaced Repetition)
+  // 5. Switch Course Mutation
+  const switchCourseMutation = useMutation({
+    mutationFn: async (newCourseId: string) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
+
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ active_hsk_course_id: newCourseId, updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
+
+      if (error) throw error
+      return newCourseId
+    },
+    onSuccess: (newCourseId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile(userId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.hskVocabulary(userId, newCourseId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.hskLessons(userId, newCourseId) })
+    },
+  })
+
+  // 6. Submit Vocabulary Review (SM-2 Spaced Repetition + Study Session + XP)
   const reviewVocabMutation = useMutation({
     mutationFn: async ({
       vocab,
@@ -69,6 +141,8 @@ export function useChinese() {
       vocab: HskVocabulary
       rating: ReviewRating
     }) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
+
       const nextSR = calculateNextReview(
         {
           interval_days: vocab.sr_interval_days || 0,
@@ -94,34 +168,69 @@ export function useChinese() {
           first_learned_at: vocab.first_learned_at || new Date().toISOString(),
           correct_count: (vocab.correct_count || 0) + (isCorrect ? 1 : 0),
           incorrect_count: (vocab.incorrect_count || 0) + (isCorrect ? 0 : 1),
-          memory_level: nextSR.repetitions === 0 ? 'hard' : nextSR.repetitions > 4 ? 'mastered' : 'learning',
+          memory_level:
+            rating === 'forgot'
+              ? 'hard'
+              : nextSR.repetitions > 4
+              ? 'mastered'
+              : 'learned',
           updated_at: new Date().toISOString(),
         })
         .eq('id', vocab.id)
-        .eq('user_id', userId!)
+        .eq('user_id', userId)
 
       if (updateError) throw updateError
 
       // Log review record
       await supabase.from('vocabulary_reviews').insert({
-        user_id: userId!,
+        user_id: userId,
         vocabulary_id: vocab.id,
         review_date: today,
         rating,
         is_correct: isCorrect,
       })
 
-      // Award XP for review
+      // Award XP for review (idempotent action)
       await supabase.from('user_xp_logs').insert({
-        user_id: userId!,
+        user_id: userId,
         amount: isCorrect ? 5 : 2,
         action_type: 'vocab_review',
         reference_id: vocab.id,
       })
+
+      // Record / update today's study session for streak calculation
+      const { data: existingSession } = await supabase
+        .from('study_sessions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('session_date', today)
+        .maybeSingle()
+
+      if (existingSession) {
+        await supabase
+          .from('study_sessions')
+          .update({
+            reviewed_words_count: (existingSession.reviewed_words_count || 0) + 1,
+            duration_minutes: (existingSession.duration_minutes || 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingSession.id)
+      } else {
+        await supabase.from('study_sessions').insert({
+          user_id: userId,
+          session_date: today,
+          new_words_count: 0,
+          reviewed_words_count: 1,
+          duration_minutes: 2,
+          is_auto_generated: true,
+        })
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hsk-vocab', userId] })
-      queryClient.invalidateQueries({ queryKey: ['xp', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.hskVocabulary(userId, activeCourseId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.xp(userId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.streak(userId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.studySessions(userId) })
     },
   })
 
@@ -132,8 +241,9 @@ export function useChinese() {
   const masteredVocab = vocabulary.filter(v => v.memory_level === 'mastered')
 
   return {
-    courses: coursesQuery.data || [],
+    courses,
     activeCourse,
+    activeCourseId,
     lessons: lessonsQuery.data || [],
     vocabulary,
     dueVocab,
@@ -141,12 +251,16 @@ export function useChinese() {
     learnedCount: learnedVocab.length,
     masteredCount: masteredVocab.length,
     dueCount: dueVocab.length,
-    loading: coursesQuery.isLoading || vocabularyQuery.isLoading,
+    loading: coursesQuery.isLoading || vocabularyQuery.isLoading || profileQuery.isLoading,
+    switchCourse: switchCourseMutation.mutateAsync,
     submitReview: reviewVocabMutation.mutateAsync,
-    refetch: () => {
-      coursesQuery.refetch()
-      lessonsQuery.refetch()
-      vocabularyQuery.refetch()
+    refetch: async () => {
+      await Promise.all([
+        coursesQuery.refetch(),
+        profileQuery.refetch(),
+        lessonsQuery.refetch(),
+        vocabularyQuery.refetch(),
+      ])
     },
   }
 }
