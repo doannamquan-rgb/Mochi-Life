@@ -2,7 +2,7 @@
 
 > Ứng dụng quản lý cuộc sống cá nhân đa năng theo phong cách kawaii — Giảm cân & Luyện tập, Học tiếng Trung đa cấp độ, Kiểm soát Chi tiêu, Giao dịch định kỳ, Lịch tổng hợp, Gamification & PWA Offline.
 
-link web: [https://mochi-life-z7pj-delta.vercel.app/](https://mochi-life-z7pj-delta.vercel.app/)
+
 
 ---
 
