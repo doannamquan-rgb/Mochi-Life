@@ -264,6 +264,13 @@ export default function ChineseScreen() {
               </View>
             ))
           )}
+          {filteredVocabulary.length > 60 && (
+            <View style={styles.vocabCapNote}>
+              <Text style={styles.vocabCapText}>
+                Đang hiển thị 60/{filteredVocabulary.length} từ — dùng tìm kiếm để lọc 🔍
+              </Text>
+            </View>
+          )}
         </MochiCard>
       </ScrollView>
 
@@ -600,5 +607,17 @@ const styles = StyleSheet.create({
   courseOptionCount: {
     ...typography.caption,
     color: colors.chocolateMuted,
+  },
+  vocabCapNote: {
+    padding: spacing.md,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.chocolateBorder,
+  },
+  vocabCapText: {
+    ...typography.caption,
+    color: colors.chocolateMuted,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 })
