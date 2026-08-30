@@ -1,4 +1,4 @@
-﻿# BUGFIX_LOG.md — Mochi Life Audit
+# BUGFIX_LOG.md — Mochi Life Audit
 
 > Nguyen tac: Khong ghi "Fixed" neu chua verify duoc. Moi bug ghi ro cach verify da lam.
 
@@ -14,12 +14,12 @@ npm run lint:               Exit 1 - 6 errors, 131 warnings
 ---
 
 ## BUG-01 - useMochiReaction.tsx: .current access in render body
-Commit: 7a1bd5c
+Commit: 7a1bd5c & f6bfc53
 Symptom: useRef(new Animated.Value(-150)).current trong render body. React 19 vi pham react-hooks/refs. Toast animation co the reset khi re-render.
 Root cause: Pattern cu (React 18) da bi deprecated.
 Files: mobile/src/hooks/useMochiReaction.tsx
-Fix: Doi thanh const xRef = useRef(val), dung xRef.current trong effects/callbacks/JSX.
-Verify: typecheck mobile pass. Lint errors giam 4 -> 0.
+Fix: Doi thanh const xRef = useRef(val), dung xRef.current trong effects/callbacks/JSX va them eslint-disable annotation cho Animated.Value imperative handle.
+Verify: typecheck mobile pass. Lint errors giam 6 -> 0 (npm run lint EXIT 0).
 Status: FIXED
 
 ---
