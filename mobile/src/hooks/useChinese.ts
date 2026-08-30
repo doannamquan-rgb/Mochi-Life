@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
 import { queryKeys } from '../lib/query-keys'
-import { calculateNextReview, isDueForReview, todayString } from '@mochi/shared'
+import { calculateNextReview, isDueForReview, getMemoryLevelFromSR, todayString } from '@mochi/shared'
 import type { HskCourse, HskLesson, HskVocabulary, ReviewRating, UserProfile } from '@mochi/shared'
 
 export function useChinese() {
@@ -168,12 +168,7 @@ export function useChinese() {
           first_learned_at: vocab.first_learned_at || new Date().toISOString(),
           correct_count: (vocab.correct_count || 0) + (isCorrect ? 1 : 0),
           incorrect_count: (vocab.incorrect_count || 0) + (isCorrect ? 0 : 1),
-          memory_level:
-            rating === 'forgot'
-              ? 'hard'
-              : nextSR.repetitions > 4
-              ? 'mastered'
-              : 'learned',
+          memory_level: getMemoryLevelFromSR(nextSR),
           updated_at: new Date().toISOString(),
         })
         .eq('id', vocab.id)
