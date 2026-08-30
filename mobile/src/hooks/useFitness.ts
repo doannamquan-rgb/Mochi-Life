@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
 import { queryKeys } from '../lib/query-keys'
 import { calculateBMI, estimateCalories, todayString } from '@mochi/shared'
-import type { WeightGoal, WeightLog, ExerciseLog, FitnessGoal, UserProfile } from '@mochi/shared'
+import type { WeightGoal, WeightLog, ExerciseLog, FitnessGoal, UserProfile, CalorieIntakeEntry } from '@mochi/shared'
 
 export function useFitness() {
   const { user } = useAuth()
@@ -56,6 +56,22 @@ export function useFitness() {
         .limit(30)
       if (error) throw error
       return (data || []) as ExerciseLog[]
+    },
+  })
+
+  // 3b. Calorie Intake Entries
+  const calorieIntakeQuery = useQuery({
+    queryKey: ['calorie-intake', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('calorie_intake_entries')
+        .select('*')
+        .eq('user_id', userId!)
+        .order('date', { ascending: false })
+        .limit(30)
+      if (error) return []
+      return (data || []) as CalorieIntakeEntry[]
     },
   })
 
@@ -225,6 +241,51 @@ export function useFitness() {
     },
   })
 
+  // 8. Add Calorie Intake Mutation
+  const addCalorieIntakeMutation = useMutation({
+    mutationFn: async ({
+      calories,
+      note,
+      date,
+    }: {
+      calories: number
+      note?: string
+      date?: string
+    }) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
+      if (!Number.isFinite(calories) || calories <= 0) {
+        throw new Error('Lượng calo phải lớn hơn 0 kcal')
+      }
+
+      const targetDate = date || todayString()
+      const { data, error } = await supabase
+        .from('calorie_intake_entries')
+        .insert({
+          user_id: userId,
+          date: targetDate,
+          calories,
+          note: note?.trim() || null,
+        })
+        .select()
+        .single()
+      if (error) throw error
+
+      // Award XP safely
+      await supabase.from('user_xp_logs').insert({
+        user_id: userId,
+        amount: 5,
+        action_type: 'calorie_intake_logged',
+        reference_id: `calorie:${targetDate}_${Date.now()}`,
+      })
+
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calorie-intake', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.xp(userId) })
+    },
+  })
+
   // Computed values
   const latestWeight =
     weightLogsQuery.data?.[0]?.weight ||
@@ -250,10 +311,21 @@ export function useFitness() {
   const weeklyMinutes = weeklyExerciseLogs.reduce((sum, l) => sum + (l.duration_minutes || 0), 0)
   const weeklyCalories = weeklyExerciseLogs.reduce((sum, l) => sum + (l.calories_burned || 0), 0)
 
+  const today = todayString()
+  const todayIntakeList = (calorieIntakeQuery.data || []).filter(c => c.date === today)
+  const todayIntakeCalories = todayIntakeList.reduce((sum, c) => sum + (c.calories || 0), 0)
+
+  const weeklyIntakeList = (calorieIntakeQuery.data || []).filter(
+    c => new Date(c.date) >= oneWeekAgo
+  )
+  const weeklyIntakeCalories = weeklyIntakeList.reduce((sum, c) => sum + (c.calories || 0), 0)
+  const weeklyCalorieBalance = weeklyIntakeCalories - weeklyCalories
+
   return {
     weightGoal: weightGoalQuery.data,
     weightLogs: weightLogsQuery.data || [],
     exerciseLogs: exerciseLogsQuery.data || [],
+    calorieIntakeEntries: calorieIntakeQuery.data || [],
     fitnessGoal: fitnessGoalQuery.data,
     profile: profileQuery.data,
     latestWeight,
@@ -262,14 +334,19 @@ export function useFitness() {
     weeklyMinutes,
     weeklyCalories,
     weeklySessions: weeklyExerciseLogs.length,
-    loading: weightLogsQuery.isLoading || exerciseLogsQuery.isLoading,
+    todayIntakeCalories,
+    weeklyIntakeCalories,
+    weeklyCalorieBalance,
+    loading: weightLogsQuery.isLoading || exerciseLogsQuery.isLoading || calorieIntakeQuery.isLoading,
     addWeightLog: addWeightLogMutation.mutateAsync,
     addExerciseLog: addExerciseLogMutation.mutateAsync,
+    addCalorieIntake: addCalorieIntakeMutation.mutateAsync,
     refetch: async () => {
       await Promise.all([
         weightGoalQuery.refetch(),
         weightLogsQuery.refetch(),
         exerciseLogsQuery.refetch(),
+        calorieIntakeQuery.refetch(),
         fitnessGoalQuery.refetch(),
         profileQuery.refetch(),
       ])

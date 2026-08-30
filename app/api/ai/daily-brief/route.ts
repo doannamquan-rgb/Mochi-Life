@@ -7,6 +7,8 @@ import { generateDeterministicInsights } from '@/lib/ai/insights'
 import { MOCHI_DAILY_BRIEF_PROMPT } from '@/lib/ai/prompts'
 import { validateDailyBrief } from '@/lib/ai/schemas'
 
+export const maxDuration = 60
+
 export async function GET(request: Request) {
   try {
     // 1. Auth check server-side (Dual Cookie + Bearer)

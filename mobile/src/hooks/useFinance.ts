@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
 import { queryKeys } from '../lib/query-keys'
-import { parseAndValidateVNDAmount } from '@mochi/shared'
-import type { Wallet, ExpenseCategory, Transaction, Budget, CreateTransactionAtomicInput } from '@mochi/shared'
+import { parseAndValidateVNDAmount, calculateWalletBalance, calculateTotalWalletBalance, todayString } from '@mochi/shared'
+import type { Wallet, ExpenseCategory, Transaction, Budget, CreateTransactionAtomicInput, WalletBalanceSnapshot } from '@mochi/shared'
 
 export function useFinance() {
   const { user } = useAuth()
@@ -29,6 +29,21 @@ export function useFinance() {
         .order('created_at', { ascending: true })
       if (error) throw error
       return (data || []) as Wallet[]
+    },
+  })
+
+  // 1b. Wallet Snapshots
+  const snapshotsQuery = useQuery({
+    queryKey: ['wallet-snapshots', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('wallet_balance_snapshots')
+        .select('*')
+        .eq('user_id', userId!)
+        .order('as_of_date', { ascending: false })
+      if (error) return []
+      return (data || []) as WalletBalanceSnapshot[]
     },
   })
 
@@ -214,11 +229,105 @@ export function useFinance() {
       queryClient.invalidateQueries({ queryKey: queryKeys.wallets(userId) })
       queryClient.invalidateQueries({ queryKey: ['monthly-tx-aggregates', userId] })
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets(userId) })
+      queryClient.invalidateQueries({ queryKey: ['wallet-snapshots', userId] })
     },
   })
 
-  // Calculate stats from dedicated monthly aggregates query
-  const totalBalance = (walletsQuery.data || []).reduce((sum, w) => sum + (w.balance || 0), 0)
+  // 6. Adjust Wallet Balance Mutation (creates balance snapshot)
+  const adjustWalletBalanceMutation = useMutation({
+    mutationFn: async ({
+      walletId,
+      balance,
+      asOfDate,
+    }: {
+      walletId: string
+      balance: number
+      asOfDate?: string
+    }) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
+      const targetDate = asOfDate || todayString()
+
+      const { data, error } = await supabase
+        .from('wallet_balance_snapshots')
+        .insert({
+          wallet_id: walletId,
+          user_id: userId,
+          balance,
+          as_of_date: targetDate,
+        })
+        .select()
+        .single()
+      if (error) throw error
+
+      // Update wallets.balance as well
+      await supabase.from('wallets').update({ balance }).eq('id', walletId)
+
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['wallet-snapshots', userId] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallets(userId) })
+    },
+  })
+
+  // 7. Add Wallet Mutation
+  const addWalletMutation = useMutation({
+    mutationFn: async ({
+      name,
+      type,
+      icon,
+      balance,
+    }: {
+      name: string
+      type?: 'cash' | 'bank' | 'ewallet' | 'credit_card' | 'other'
+      icon?: string
+      balance?: number
+    }) => {
+      if (!userId) throw new Error('Chưa đăng nhập')
+      const initialBal = balance || 0
+
+      const { data, error } = await supabase
+        .from('wallets')
+        .insert({
+          user_id: userId,
+          name: name.trim(),
+          type: type || 'bank',
+          icon: icon || '🪙',
+          balance: initialBal,
+        })
+        .select()
+        .single()
+      if (error) throw error
+
+      if (initialBal !== 0 && data) {
+        await supabase.from('wallet_balance_snapshots').insert({
+          wallet_id: data.id,
+          user_id: userId,
+          balance: initialBal,
+          as_of_date: todayString(),
+        })
+      }
+
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallets(userId) })
+      queryClient.invalidateQueries({ queryKey: ['wallet-snapshots', userId] })
+    },
+  })
+
+  const rawWallets = walletsQuery.data || []
+  const snapshots = snapshotsQuery.data || []
+  const transactions = transactionsQuery.data || []
+  const today = todayString()
+
+  // Dynamic wallet balance calculation using domain logic
+  const computedWallets = rawWallets.map(w => ({
+    ...w,
+    balance: calculateWalletBalance(w, snapshots, transactions, today),
+  }))
+
+  const totalBalance = calculateTotalWalletBalance(rawWallets, snapshots, transactions, today)
   const monthlyItems = monthlyAggregatesQuery.data || []
   const monthExpense = monthlyItems
     .filter(t => t.type === 'expense')
@@ -228,19 +337,23 @@ export function useFinance() {
     .reduce((sum, t) => sum + (t.amount || 0), 0)
 
   return {
-    wallets: walletsQuery.data || [],
+    wallets: computedWallets,
     categories: categoriesQuery.data || [],
-    transactions: transactionsQuery.data || [],
+    transactions,
     budgets: budgetsQuery.data || [],
+    snapshots,
     totalBalance,
     monthExpense,
     monthIncome,
-    loading: walletsQuery.isLoading || transactionsQuery.isLoading,
+    loading: walletsQuery.isLoading || transactionsQuery.isLoading || snapshotsQuery.isLoading,
     addTransaction: addTransactionMutation.mutateAsync,
     deleteTransaction: deleteTransactionMutation.mutateAsync,
+    adjustWalletBalance: adjustWalletBalanceMutation.mutateAsync,
+    addWallet: addWalletMutation.mutateAsync,
     refetch: async () => {
       await Promise.all([
         walletsQuery.refetch(),
+        snapshotsQuery.refetch(),
         categoriesQuery.refetch(),
         transactionsQuery.refetch(),
         monthlyAggregatesQuery.refetch(),

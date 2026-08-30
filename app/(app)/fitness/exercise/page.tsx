@@ -441,7 +441,7 @@ function ExercisePageContent() {
       `${formatDate(l.log_date)},${getExerciseLabel(l.exercise_type)},${l.duration_minutes},${l.calories_burned ?? ''},${l.intensity},${l.distance_km ?? ''},${l.steps ?? ''},"${l.note ?? ''}"`
     )
     const csv = [header, ...rows].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'luyen-tap.csv'; a.click()
     URL.revokeObjectURL(url)

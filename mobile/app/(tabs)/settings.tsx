@@ -187,7 +187,7 @@ export default function SettingsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.updateTitle}>Mochi Life OTA Engine</Text>
               <Text style={styles.updateSub}>
-                Phiên bản {appVersion} (build 6.1.1.26) • Kênh {channel}
+                Phiên bản {appVersion} (build 6.2.0.1) • Kênh {channel}
               </Text>
             </View>
             {isChecking && <ActivityIndicator size="small" color={colors.chocolate} />}
@@ -198,7 +198,7 @@ export default function SettingsScreen() {
               • Runtime Version: <Text style={{ fontWeight: '700' }}>{runtimeVersion}</Text>
             </Text>
             <Text style={styles.updateDetailText}>
-              • Bản vá / Build: <Text style={{ fontWeight: '700', color: colors.mintDark }}>v6.1.1.26 (Audit & Hotfix)</Text>
+              • Bản vá / Build: <Text style={{ fontWeight: '700', color: colors.mintDark }}>v6.2.0.1 (Calorie & Wallet Snapshot)</Text>
             </Text>
             {lastCheckedAt && (
               <Text style={styles.updateDetailText}>
@@ -268,7 +268,7 @@ export default function SettingsScreen() {
 
         {/* Footer info */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>🐱 Mochi Life v{appVersion} (build 6.1.1.26) • Made with ❤️</Text>
+          <Text style={styles.footerText}>🐱 Mochi Life v{appVersion} (build 6.2.0.1) • Made with ❤️</Text>
           <Text style={styles.footerSubtext}>Next.js + Expo Native + Shared Core</Text>
         </View>
       </ScrollView>

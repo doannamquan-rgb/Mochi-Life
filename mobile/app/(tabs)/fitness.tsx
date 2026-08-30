@@ -40,9 +40,13 @@ export default function FitnessScreen() {
     weeklyMinutes,
     weeklyCalories,
     weeklySessions,
+    todayIntakeCalories,
+    weeklyIntakeCalories,
+    weeklyCalorieBalance,
     loading,
     addWeightLog,
     addExerciseLog,
+    addCalorieIntake,
     refetch,
   } = useFitness()
 
@@ -56,6 +60,12 @@ export default function FitnessScreen() {
   const [weightNote, setWeightNote] = useState('')
   const [submittingWeight, setSubmittingWeight] = useState(false)
 
+  // Calorie Modal State
+  const [isCalorieModalOpen, setIsCalorieModalOpen] = useState(false)
+  const [newCalories, setNewCalories] = useState('')
+  const [calorieNote, setCalorieNote] = useState('')
+  const [submittingCalorie, setSubmittingCalorie] = useState(false)
+
   // Exercise Modal State
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false)
   const [selectedExercise, setSelectedExercise] = useState('running')
@@ -68,6 +78,30 @@ export default function FitnessScreen() {
     setRefreshing(true)
     await refetch()
     setRefreshing(false)
+  }
+
+  const handleSaveCalorie = async () => {
+    const val = parseInt(newCalories, 10)
+    if (!val || val <= 0 || isNaN(val)) {
+      Alert.alert('Thông báo', 'Vui lòng nhập lượng calo hợp lệ (> 0 kcal)')
+      return
+    }
+
+    setSubmittingCalorie(true)
+    try {
+      await addCalorieIntake({
+        calories: val,
+        note: calorieNote.trim() || undefined,
+      })
+      setIsCalorieModalOpen(false)
+      setNewCalories('')
+      setCalorieNote('')
+      Alert.alert('Thành công', 'Đã ghi nhận calo nạp vào! 🥗')
+    } catch (e: any) {
+      Alert.alert('Lỗi', e.message || 'Không thể lưu calo nạp')
+    } finally {
+      setSubmittingCalorie(false)
+    }
   }
 
   const bmiInfo = currentBMI ? getBMICategory(currentBMI) : null
@@ -195,7 +229,7 @@ export default function FitnessScreen() {
         </MochiCard>
 
         {/* Weekly Stats Grid */}
-        <Text style={styles.sectionTitle}>Tập luyện 7 ngày qua 🔥</Text>
+        <Text style={styles.sectionTitle}>Tập luyện & Dinh dưỡng 🔥</Text>
         <View style={styles.grid}>
           <StatCard
             title="Thời gian tập"
@@ -213,16 +247,40 @@ export default function FitnessScreen() {
             accentColor={colors.peach}
             style={styles.gridItem}
           />
+          <StatCard
+            title="Calo nạp vào"
+            value={`${todayIntakeCalories} kcal`}
+            subtitle={`Tuần: ${weeklyIntakeCalories} kcal`}
+            icon={<Text style={{ fontSize: 18 }}>🥗</Text>}
+            accentColor={colors.mint}
+            style={styles.gridItem}
+          />
+          <StatCard
+            title="Cân bằng calo"
+            value={`${weeklyCalorieBalance > 0 ? `+${weeklyCalorieBalance}` : weeklyCalorieBalance} kcal`}
+            subtitle="Nạp vào − Tiêu hao"
+            icon={<Text style={{ fontSize: 18 }}>⚡</Text>}
+            accentColor={colors.cheese}
+            style={styles.gridItem}
+          />
         </View>
 
-        {/* Log Exercise Action */}
+        {/* Log Actions */}
         <View style={styles.logExerciseRow}>
           <Text style={styles.sectionTitle}>Lịch sử luyện tập 🏃</Text>
-          <MochiButton
-            title="+ Ghi bài tập"
-            size="sm"
-            onPress={() => setIsExerciseModalOpen(true)}
-          />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <MochiButton
+              title="+ Calo nạp"
+              variant="secondary"
+              size="sm"
+              onPress={() => setIsCalorieModalOpen(true)}
+            />
+            <MochiButton
+              title="+ Ghi bài tập"
+              size="sm"
+              onPress={() => setIsExerciseModalOpen(true)}
+            />
+          </View>
         </View>
 
         <MochiCard style={styles.listCard}>
@@ -315,6 +373,43 @@ export default function FitnessScreen() {
             loading={submittingWeight}
             disabled={submittingWeight}
             onPress={handleSaveWeight}
+            style={{ flex: 1.5 }}
+          />
+        </View>
+      </KeyboardSafeModal>
+
+      {/* Keyboard-Safe Log Calorie Modal */}
+      <KeyboardSafeModal
+        visible={isCalorieModalOpen}
+        onClose={() => setIsCalorieModalOpen(false)}
+      >
+        <Text style={styles.modalTitle}>Ghi nhận calo nạp vào 🥗</Text>
+        <MochiInput
+          label="Lượng calo (kcal) *"
+          placeholder="650"
+          value={newCalories}
+          onChangeText={setNewCalories}
+          keyboardType="numeric"
+          autoFocus
+        />
+        <MochiInput
+          label="Ghi chú món ăn (tùy chọn)"
+          placeholder="Cơm tấm, phở bò, sinh tố..."
+          value={calorieNote}
+          onChangeText={setCalorieNote}
+        />
+        <View style={styles.modalActions}>
+          <MochiButton
+            title="Hủy"
+            variant="ghost"
+            onPress={() => setIsCalorieModalOpen(false)}
+            style={{ flex: 1 }}
+          />
+          <MochiButton
+            title="Lưu lại"
+            loading={submittingCalorie}
+            disabled={submittingCalorie}
+            onPress={handleSaveCalorie}
             style={{ flex: 1.5 }}
           />
         </View>

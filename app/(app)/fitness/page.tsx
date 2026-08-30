@@ -13,6 +13,10 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
 
+import { toast } from 'sonner'
+import { awardXP } from '@/lib/gamification'
+import { notifyDataChanged } from '@/lib/events'
+
 function StatCard({ emoji, title, value, sub, color }: { emoji: string; title: string; value: React.ReactNode; sub?: string; color: string }) {
   return (
     <div className="stat-card" style={{ borderTop: `3px solid ${color}` }}>
@@ -24,6 +28,110 @@ function StatCard({ emoji, title, value, sub, color }: { emoji: string; title: s
   )
 }
 
+function CalorieIntakeForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { user } = useUser()
+  const [date, setDate] = useState(todayString())
+  const [calories, setCalories] = useState('')
+  const [note, setNote] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const cal = parseInt(calories, 10)
+    if (!cal || isNaN(cal) || cal <= 0) {
+      toast.error('Vui lòng nhập lượng calo hợp lệ (> 0 kcal)')
+      return
+    }
+    if (!user) return
+    setLoading(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('calorie_intake_entries').insert({
+      user_id: user.id,
+      date,
+      calories: cal,
+      note: note.trim() || null,
+    })
+
+    if (error) {
+      toast.error('Lỗi khi ghi nhận calo: ' + error.message)
+      setLoading(false)
+      return
+    }
+
+    toast.success('Đã ghi nhận calo nạp vào! 🥗')
+    // Award XP safely with idempotent key
+    await awardXP(user.id, 5, 'calorie_intake_logged', `calorie:${date}_${Date.now()}`)
+    notifyDataChanged('fitness', 'intake')
+    onSaved()
+    onClose()
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>🥗 Ghi nhận calo nạp vào</h3>
+          <button type="button" onClick={onClose} className="modal-close-btn">✕</button>
+        </div>
+        <form onSubmit={handleSubmit} className="modal-body">
+          <div className="form-group">
+            <label className="mochi-label">Ngày ghi *</label>
+            <input
+              type="date"
+              className="mochi-input"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="mochi-label">Lượng calo (kcal) *</label>
+            <input
+              type="number"
+              className="mochi-input"
+              placeholder="ví dụ: 650"
+              value={calories}
+              onChange={e => setCalories(e.target.value)}
+              min="1"
+              max="10000"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="mochi-label">Ghi chú món ăn / bữa ăn (tùy chọn)</label>
+            <input
+              type="text"
+              className="mochi-input"
+              placeholder="ví dụ: Cơm tấm sườn bì, Phở bò, Sinh tố..."
+              value={note}
+              onChange={e => setNote(e.target.value)}
+            />
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="mochi-btn mochi-btn-secondary" onClick={onClose} disabled={loading}>
+              Hủy
+            </button>
+            <button type="submit" className="mochi-btn mochi-btn-primary" disabled={loading}>
+              {loading ? 'Đang lưu...' : 'Lưu calo nạp'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <style jsx>{`
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+        .modal-card { background: white; border-radius: 20px; width: 100%; max-width: 440px; padding: 24px; box-shadow: var(--shadow-lg); }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .modal-header h3 { font-size: 1.15rem; font-weight: 800; color: var(--chocolate-600); margin: 0; }
+        .modal-close-btn { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--chocolate-400); }
+        .modal-body { display: flex; flex-direction: column; gap: 14px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+      `}</style>
+    </div>
+  )
+}
+
 export default function FitnessOverviewPage() {
   const { user } = useUser()
   const [loading, setLoading] = useState(true)
@@ -31,6 +139,7 @@ export default function FitnessOverviewPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<RollingPeriod>('30d')
   const [appliedPeriod, setAppliedPeriod] = useState<RollingPeriod>('30d')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [showIntakeModal, setShowIntakeModal] = useState(false)
 
   const requestIdRef = useRef(0)
   const mountedRef = useRef(true)
@@ -119,10 +228,15 @@ export default function FitnessOverviewPage() {
           <p className="page-subtitle">Theo dõi hành trình của bạn</p>
         </div>
         <div className="header-actions">
+          <button onClick={() => setShowIntakeModal(true)} className="mochi-btn mochi-btn-secondary mochi-btn-sm">🥗 Ghi calo nạp</button>
           <Link href="/fitness/weight?action=add" className="mochi-btn mochi-btn-secondary mochi-btn-sm">⚖️ Ghi cân</Link>
           <Link href="/fitness/exercise?action=add" className="mochi-btn mochi-btn-primary mochi-btn-sm">+ Thêm buổi tập</Link>
         </div>
       </div>
+
+      {showIntakeModal && (
+        <CalorieIntakeForm onClose={() => setShowIntakeModal(false)} onSaved={loadData} />
+      )}
 
       {errorMsg && (
         <div style={{ background: '#FFF4F0', border: '1.5px solid var(--peach-300)', padding: '12px 16px', borderRadius: 16, color: 'var(--peach-600)', fontWeight: 700, fontSize: '0.85rem', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -146,7 +260,6 @@ export default function FitnessOverviewPage() {
         ))}
       </div>
 
-
       {/* Quick stats */}
       <div className="stats-grid">
         <StatCard
@@ -157,25 +270,25 @@ export default function FitnessOverviewPage() {
           color="#FF7A5C"
         />
         <StatCard
-          emoji="🎯"
-          title="Mục tiêu"
-          value={weightGoal ? `${weightGoal.target_weight} kg` : '–'}
-          sub={weightGoal && latestWeight ? `Còn ${Math.abs(latestWeight.weight - weightGoal.target_weight).toFixed(1)} kg nữa` : undefined}
-          color="#FFCA1A"
-        />
-        <StatCard
           emoji="🔥"
-          title="Calo hôm nay"
+          title="Calo tiêu hao"
           value={`${stats?.todayCalories ?? 0} kcal`}
-          sub={(stats?.todayMinutes ?? 0) > 0 ? `${stats?.todayMinutes} phút tập` : 'Chưa tập hôm nay'}
+          sub={(stats?.todayMinutes ?? 0) > 0 ? `${stats?.todayMinutes} phút tập hôm nay` : 'Chưa tập hôm nay'}
           color="#8F71F5"
         />
         <StatCard
-          emoji="📅"
-          title="Buổi tập tuần này"
-          value={`${stats?.weekSessions ?? 0}/${fitnessGoal?.weekly_sessions ?? 4}`}
-          sub={`${stats?.weekMinutes ?? 0} phút · ${stats?.weekCalories ?? 0} kcal`}
+          emoji="🥗"
+          title="Calo nạp vào"
+          value={`${stats?.todayIntakeCalories ?? 0} kcal`}
+          sub={`Tổng kỳ: ${stats?.periodIntakeCalories ?? 0} kcal`}
           color="#3BB88E"
+        />
+        <StatCard
+          emoji="⚡"
+          title="Cân bằng calo"
+          value={stats ? `${stats.calorieBalance > 0 ? `+${stats.calorieBalance}` : stats.calorieBalance} kcal` : '–'}
+          sub="Nạp vào − Tiêu hao"
+          color="#FFCA1A"
         />
       </div>
 

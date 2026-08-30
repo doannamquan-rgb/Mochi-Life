@@ -75,6 +75,16 @@ export type ExerciseLog = {
   updated_at: string
 }
 
+export type CalorieIntakeEntry = {
+  id: string
+  user_id: string
+  date: string
+  calories: number
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type HskCourse = {
   id: string
   user_id: string
@@ -244,6 +254,15 @@ export type Wallet = {
   is_sample_data: boolean
   created_at: string
   updated_at: string
+}
+
+export type WalletBalanceSnapshot = {
+  id: string
+  wallet_id: string
+  user_id: string
+  balance: number
+  as_of_date: string
+  created_at: string
 }
 
 export type Transaction = {

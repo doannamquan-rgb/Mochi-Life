@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { WeightLog, WeightGoal, ExerciseLog, FitnessGoal } from './types'
+import type { WeightLog, WeightGoal, ExerciseLog, FitnessGoal, CalorieIntakeEntry } from './types'
 import { todayString, RollingPeriod } from './date-utils'
 import { getPercent } from './format'
 import { subDays } from 'date-fns'
@@ -15,9 +15,12 @@ export type FitnessStats = {
   todayCalories: number
   todayMinutes: number
   todaySessions: number
+  todayIntakeCalories: number
   periodCalories: number
   periodMinutes: number
   periodSessions: number
+  periodIntakeCalories: number
+  calorieBalance: number
   weekSessions: number
   weekMinutes: number
   weekCalories: number
@@ -25,6 +28,7 @@ export type FitnessStats = {
   fitnessGoal: FitnessGoal | null
   weightLogs: WeightLog[]
   exerciseLogs: ExerciseLog[]
+  calorieIntakeEntries: CalorieIntakeEntry[]
   error: string | null
 }
 
@@ -58,6 +62,7 @@ export async function fetchFitnessStats(
     fixedWeekExRes,
     wLogsRes,
     exLogsRes,
+    intakeLogsRes,
   ] = await Promise.all([
     // 1. Weight goal
     supabase.from('weight_goals').select('*').eq('user_id', userId).maybeSingle(),
@@ -109,6 +114,19 @@ export async function fetchFitnessStats(
         .order('id', { ascending: false })
       return q.range(from, to)
     }),
+    // 7. Period calorie intake entries
+    fetchAllRows<CalorieIntakeEntry>((from, to) => {
+      let q = supabase.from('calorie_intake_entries')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+      if (periodFromStr) {
+        q = q.gte('date', periodFromStr)
+      }
+      q = q.order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+      return q.range(from, to)
+    }),
   ])
 
   if (wGoalRes.error) fetchError = wGoalRes.error.message
@@ -117,8 +135,10 @@ export async function fetchFitnessStats(
   if (!fixedWeekExRes.ok) fetchError = fetchError ? `${fetchError}; ${fixedWeekExRes.error.message}` : fixedWeekExRes.error.message
   if (!wLogsRes.ok) fetchError = fetchError ? `${fetchError}; ${wLogsRes.error.message}` : wLogsRes.error.message
   if (!exLogsRes.ok) fetchError = fetchError ? `${fetchError}; ${exLogsRes.error.message}` : exLogsRes.error.message
+  // Gracefully handle if intake table not yet migrated
+  const intakeLogs = intakeLogsRes.ok ? intakeLogsRes.data : []
 
-  // If any query failed, return error state without partial stats
+  // If any critical query failed, return error state without partial stats
   if (fetchError) {
     return {
       latestWeight: null,
@@ -130,9 +150,12 @@ export async function fetchFitnessStats(
       todayCalories: 0,
       todayMinutes: 0,
       todaySessions: 0,
+      todayIntakeCalories: 0,
       periodCalories: 0,
       periodMinutes: 0,
       periodSessions: 0,
+      periodIntakeCalories: 0,
+      calorieBalance: 0,
       weekSessions: 0,
       weekMinutes: 0,
       weekCalories: 0,
@@ -140,6 +163,7 @@ export async function fetchFitnessStats(
       fitnessGoal: null,
       weightLogs: [],
       exerciseLogs: [],
+      calorieIntakeEntries: [],
       error: fetchError,
     }
   }
@@ -156,7 +180,7 @@ export async function fetchFitnessStats(
 
   const weightChange = latestWeight && prevWeight ? Number((latestWeight.weight - prevWeight.weight).toFixed(1)) : null
 
-  const weightProgress = weightGoal && latestWeight
+  const weightProgress = weightGoal && latestWeight && (weightGoal.starting_weight !== weightGoal.target_weight)
     ? getPercent(
         weightGoal.starting_weight - latestWeight.weight,
         weightGoal.starting_weight - weightGoal.target_weight
@@ -171,6 +195,12 @@ export async function fetchFitnessStats(
   const periodCalories = exerciseLogs.reduce((sum, e) => sum + (e.calories_burned ?? 0), 0)
   const periodMinutes = exerciseLogs.reduce((sum, e) => sum + e.duration_minutes, 0)
   const periodSessions = exerciseLogs.length
+
+  // Period Calorie Intake calculations
+  const periodIntakeCalories = intakeLogs.reduce((sum, c) => sum + (c.calories || 0), 0)
+  const todayIntake = intakeLogs.filter(c => c.date === today)
+  const todayIntakeCalories = todayIntake.reduce((sum, c) => sum + (c.calories || 0), 0)
+  const calorieBalance = periodIntakeCalories - periodCalories // Intake - Burned
 
   // Fixed Current-Week Exercise calculations (from fixedWeekExRes)
   const weekExerciseLogs = fixedWeekExRes.ok ? fixedWeekExRes.data : []
@@ -193,9 +223,12 @@ export async function fetchFitnessStats(
     todayCalories,
     todayMinutes,
     todaySessions,
+    todayIntakeCalories,
     periodCalories,
     periodMinutes,
     periodSessions,
+    periodIntakeCalories,
+    calorieBalance,
     weekSessions,
     weekMinutes,
     weekCalories,
@@ -203,6 +236,7 @@ export async function fetchFitnessStats(
     fitnessGoal,
     weightLogs,
     exerciseLogs,
+    calorieIntakeEntries: intakeLogs,
     error: null,
   }
 }

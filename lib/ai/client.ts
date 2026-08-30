@@ -21,10 +21,18 @@ const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
 
 /**
  * Resolves thinkingConfig for Gemini calls based on call options or environment variables.
+ * Supports thinkingLevel ('low' | 'medium' | 'high') or thinkingBudget.
  */
-function resolveThinkingConfig(options?: AICallConfigOptions): { thinkingConfig?: { thinkingBudget: number } } {
+function resolveThinkingConfig(options?: AICallConfigOptions): Record<string, any> {
+  if (options?.thinkingLevel) {
+    return { thinkingConfig: { thinkingLevel: options.thinkingLevel } };
+  }
   if (options?.thinkingBudget !== undefined) {
     return { thinkingConfig: { thinkingBudget: options.thinkingBudget } };
+  }
+  const envLevel = process.env.GEMINI_THINKING_LEVEL;
+  if (envLevel === 'low' || envLevel === 'medium' || envLevel === 'high') {
+    return { thinkingConfig: { thinkingLevel: envLevel } };
   }
   const envBudget = process.env.GEMINI_THINKING_BUDGET;
   if (envBudget !== undefined && envBudget.trim() !== '') {
@@ -36,11 +44,10 @@ function resolveThinkingConfig(options?: AICallConfigOptions): { thinkingConfig?
   return {};
 }
 
-
 // ─── Timeout Constants ────────────────────────────────────────────────────────
-const CHAT_TIMEOUT_MS = 30000;
-const DAILY_BRIEF_TIMEOUT_MS = 30000;
-const REACTION_TIMEOUT_MS = 20000;
+const CHAT_TIMEOUT_MS = 60000;
+const DAILY_BRIEF_TIMEOUT_MS = 45000;
+const REACTION_TIMEOUT_MS = 30000;
 
 /**
  * Creates an AbortController + setTimeout pair that properly cleans up.
@@ -121,7 +128,6 @@ export async function generateChatResponse(
       contents: rawContents,
       config: {
         systemInstruction: systemPrompt,
-        temperature: 0.7,
         ...thinking,
         abortSignal: signal,
         httpOptions: { timeout: CHAT_TIMEOUT_MS },
@@ -129,8 +135,14 @@ export async function generateChatResponse(
     });
 
     return response.text ?? '';
-  } catch (error: unknown) {
-    console.error('[Gemini Chat API Error]:', error);
+  } catch (error: any) {
+    console.error('[Gemini Chat API Error Details]:', {
+      name: error?.name,
+      message: error?.message,
+      status: error?.status || error?.statusCode,
+      errorDetails: error?.errorDetails || error?.details,
+      stack: error?.stack,
+    });
     if (isAbortError(error)) {
       throw new Error('Mochi AI đang bận quá, bạn thử lại sau chút nhé! 🐱💤');
     }
@@ -159,7 +171,6 @@ export async function generateDailyBriefResponse(
       contents: [{ role: 'user', parts: [{ text: context }] }],
       config: {
         systemInstruction: systemPrompt,
-        temperature: 0.3,
         responseMimeType: 'application/json',
         ...thinking,
         abortSignal: signal,
@@ -168,11 +179,17 @@ export async function generateDailyBriefResponse(
     });
 
     return response.text ?? '';
-  } catch (error: unknown) {
+  } catch (error: any) {
+    console.error('[Gemini DailyBrief API Error Details]:', {
+      name: error?.name,
+      message: error?.message,
+      status: error?.status || error?.statusCode,
+      errorDetails: error?.errorDetails || error?.details,
+    });
     if (isAbortError(error)) {
       throw new Error('Mochi AI đang bận quá, bạn thử lại sau chút nhé! 🐱💤');
     }
-    throw new Error('GEMINI_ERROR: Failed to generate daily brief');
+    throw error;
   } finally {
     cleanup();
   }
@@ -197,7 +214,6 @@ export async function generateReactionResponse(
       contents: [{ role: 'user', parts: [{ text: context }] }],
       config: {
         systemInstruction: systemPrompt,
-        temperature: 0.6,
         responseMimeType: 'application/json',
         ...thinking,
         abortSignal: signal,
@@ -206,11 +222,17 @@ export async function generateReactionResponse(
     });
 
     return response.text ?? '';
-  } catch (error: unknown) {
+  } catch (error: any) {
+    console.error('[Gemini Reaction API Error Details]:', {
+      name: error?.name,
+      message: error?.message,
+      status: error?.status || error?.statusCode,
+      errorDetails: error?.errorDetails || error?.details,
+    });
     if (isAbortError(error)) {
       throw new Error('Mochi AI đang bận quá, bạn thử lại sau chút nhé! 🐱💤');
     }
-    throw new Error('GEMINI_ERROR: Failed to generate reaction');
+    throw error;
   } finally {
     cleanup();
   }

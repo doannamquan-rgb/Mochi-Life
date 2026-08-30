@@ -25,6 +25,8 @@ const RequestBodySchema = z.object({
   ]),
 })
 
+export const maxDuration = 30
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Auth — server-side (Dual Cookie + Bearer)

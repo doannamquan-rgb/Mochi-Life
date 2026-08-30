@@ -79,6 +79,7 @@ export type MochiAIError = {
 export type ThinkingMode = 'fast' | 'balanced' | 'deep'
 
 export interface AICallConfigOptions {
+  thinkingLevel?: 'low' | 'medium' | 'high'
   thinkingBudget?: number
 }
 

@@ -6,6 +6,8 @@ import { detectContextDomains, buildContextForDomains } from '@/lib/ai/context'
 import { buildChatSystemPrompt } from '@/lib/ai/prompts'
 import type { MochiChatMessage } from '@/lib/ai/types'
 
+export const maxDuration = 60
+
 export async function POST(request: Request) {
   // 1. Feature flag check
   if (!isAIEnabled()) {
@@ -55,12 +57,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // Map thinkingMode to budget: 'fast' -> 0 (disabled), 'deep' -> 8192, 'balanced' -> undefined (dynamic)
-    let thinkingBudget: number | undefined = undefined
+    // Map thinkingMode: 'fast' -> 'low', 'deep' -> 'high', 'balanced' -> 'medium'
+    let thinkingLevel: 'low' | 'medium' | 'high' | undefined = undefined
     if (thinkingMode === 'fast') {
-      thinkingBudget = 0
+      thinkingLevel = 'low'
     } else if (thinkingMode === 'deep') {
-      thinkingBudget = 8192
+      thinkingLevel = 'high'
+    } else if (thinkingMode === 'balanced') {
+      thinkingLevel = 'medium'
     }
 
     // 5. Fetch user profile for display name
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
 
     // 7. Build system prompt & call Gemini
     const systemPrompt = buildChatSystemPrompt(aiContext)
-    const replyText = await generateChatResponse(systemPrompt, history, userMessage, { thinkingBudget })
+    const replyText = await generateChatResponse(systemPrompt, history, userMessage, { thinkingLevel })
 
     return NextResponse.json({
       message: replyText,

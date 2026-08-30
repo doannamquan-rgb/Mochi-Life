@@ -21,4 +21,10 @@ describe('AI Client & Thinking Config Configuration Tests', () => {
     process.env.MOCHI_AI_ENABLED = 'false'
     expect(isAIEnabled()).toBe(false)
   })
+
+  it('checks if AI is disabled when API key is missing', () => {
+    process.env.MOCHI_AI_ENABLED = 'true'
+    delete process.env.GEMINI_API_KEY
+    expect(isAIEnabled()).toBe(false)
+  })
 })

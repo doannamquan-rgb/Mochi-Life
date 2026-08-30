@@ -336,7 +336,7 @@ function ExpensePageContent() {
       `${formatDate(t.transaction_date)},${t.type === 'expense' ? 'Chi tiêu' : 'Thu nhập'},"${(t.category as any)?.name ?? ''}",${t.amount},"${t.description ?? ''}","${(t.wallet as any)?.name ?? ''}","${t.note ?? ''}"` 
     )
     const csv = [header, ...rows].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'chi-tieu.csv'; a.click()
     URL.revokeObjectURL(url)
@@ -399,6 +399,7 @@ function ExpensePageContent() {
           <p className="page-subtitle">{periodLabel} · {transactions.length} giao dịch</p>
         </div>
         <div className="header-actions">
+          <Link href="/expenses/wallets" className="mochi-btn mochi-btn-secondary mochi-btn-sm">💳 Ví tiền</Link>
           <Link href="/expenses/recurring" className="mochi-btn mochi-btn-secondary mochi-btn-sm">🔁 Định kỳ</Link>
           <button onClick={exportCSV} className="mochi-btn mochi-btn-secondary mochi-btn-sm">📥 CSV</button>
           <button onClick={() => { setEditingTx(undefined); setShowForm(true) }} className="mochi-btn mochi-btn-primary mochi-btn-sm">+ Thêm</button>

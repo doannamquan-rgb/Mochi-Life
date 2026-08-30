@@ -38,12 +38,18 @@ export default function FinanceScreen() {
     loading,
     addTransaction,
     deleteTransaction,
+    adjustWalletBalance,
     refetch,
   } = useFinance()
 
   const { triggerReaction } = useMochiReaction()
   const [refreshing, setRefreshing] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Wallet Balance Adjustment Modal State
+  const [editingWallet, setEditingWallet] = useState<any | null>(null)
+  const [newWalletBalance, setNewWalletBalance] = useState('')
+  const [submittingWalletBalance, setSubmittingWalletBalance] = useState(false)
 
   // New Transaction Form State
   const [type, setType] = useState<'expense' | 'income'>('expense')
@@ -110,10 +116,35 @@ export default function FinanceScreen() {
     }
   }
 
+  const handleSaveWalletBalance = async () => {
+    if (!editingWallet) return
+    const validation = parseAndValidateVNDAmount(newWalletBalance)
+    if (!validation.valid) {
+      Alert.alert('Thông báo', validation.error || 'Vui lòng nhập số dư hợp lệ')
+      return
+    }
+
+    setSubmittingWalletBalance(true)
+    try {
+      await adjustWalletBalance({
+        walletId: editingWallet.id,
+        balance: validation.value,
+        asOfDate: todayString(),
+      })
+      setEditingWallet(null)
+      setNewWalletBalance('')
+      Alert.alert('Thành công', `Đã cập nhật số dư cho ${editingWallet.name}! 🎉`)
+    } catch (e: any) {
+      Alert.alert('Lỗi', e.message || 'Không thể cập nhật số dư ví')
+    } finally {
+      setSubmittingWalletBalance(false)
+    }
+  }
+
   const handleDelete = (txId: string, desc: string) => {
     Alert.alert(
       'Xóa giao dịch',
-      `Bạn có chắc chắn muốn xóa "${desc}"? Số dư ví sẽ được tự động hoàn lại.`,
+      `Bạn có chắc chắn muốn xóa giao dịch "${desc || 'này'}"? Số dư ví liên quan sẽ được tự động hoàn lại an toàn.`,
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -123,8 +154,8 @@ export default function FinanceScreen() {
             setDeletingId(txId)
             try {
               await deleteTransaction(txId)
-            } catch (err: any) {
-              Alert.alert('Lỗi', err.message || 'Không thể xóa giao dịch')
+            } catch (e: any) {
+              Alert.alert('Lỗi', e.message || 'Không thể xóa giao dịch')
             } finally {
               setDeletingId(null)
             }
@@ -149,45 +180,45 @@ export default function FinanceScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Quản lý tài chính 💰</Text>
-          <TouchableOpacity
-            style={styles.addIconBtn}
-            onPress={handleOpenAdd}
-            accessibilityLabel="Thêm giao dịch mới"
-          >
-            <Plus size={20} color={colors.chocolate} />
+          <Text style={styles.title}>Quản lý Chi tiêu 💰</Text>
+          <TouchableOpacity style={styles.addIconBtn} onPress={handleOpenAdd} activeOpacity={0.8}>
+            <Plus size={20} color={colors.white} />
           </TouchableOpacity>
         </View>
 
-        {/* Total Balance Card */}
-        <MochiCard style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Tổng số dư ví</Text>
+        {/* Total Net Worth Card */}
+        <MochiCard style={styles.balanceCard} accentColor={colors.cheese}>
+          <Text style={styles.balanceLabel}>Tổng số dư khả dụng</Text>
           <Text style={styles.balanceValue}>{formatVND(totalBalance)}</Text>
+
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <View style={[styles.summaryIcon, { backgroundColor: colors.mintLight }]}>
                 <ArrowDownLeft size={16} color={colors.mintDark} />
               </View>
               <View>
-                <Text style={styles.summarySub}>Thu tháng</Text>
-                <Text style={styles.summaryNum}>+{formatVND(monthIncome)}</Text>
+                <Text style={styles.summaryLabel}>Thu tháng này</Text>
+                <Text style={styles.incomeValue}>+{formatVND(monthIncome)}</Text>
               </View>
             </View>
-            <View style={styles.summaryDivider} />
+
             <View style={styles.summaryItem}>
               <View style={[styles.summaryIcon, { backgroundColor: colors.peachLight }]}>
                 <ArrowUpRight size={16} color={colors.peachDark} />
               </View>
               <View>
-                <Text style={styles.summarySub}>Chi tháng</Text>
-                <Text style={styles.summaryNum}>-{formatVND(monthExpense)}</Text>
+                <Text style={styles.summaryLabel}>Chi tháng này</Text>
+                <Text style={styles.expenseValue}>-{formatVND(monthExpense)}</Text>
               </View>
             </View>
           </View>
         </MochiCard>
 
         {/* Wallets Horizontal List */}
-        <Text style={styles.sectionTitle}>Ví tiền 💳</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+          <Text style={styles.sectionTitle}>Ví tiền 💳</Text>
+          <Text style={{ fontSize: 12, color: colors.chocolateMuted, fontWeight: '700' }}>Nhấn để sửa số dư</Text>
+        </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -200,13 +231,22 @@ export default function FinanceScreen() {
             </MochiCard>
           ) : (
             wallets.map(wallet => (
-              <MochiCard key={wallet.id} style={styles.walletCard}>
-                <View style={styles.walletHeader}>
-                  <Text style={styles.walletIcon}>{wallet.icon || '🪙'}</Text>
-                  <Text style={styles.walletName}>{wallet.name}</Text>
-                </View>
-                <Text style={styles.walletBalance}>{formatVND(wallet.balance)}</Text>
-              </MochiCard>
+              <TouchableOpacity
+                key={wallet.id}
+                activeOpacity={0.85}
+                onPress={() => {
+                  setEditingWallet(wallet)
+                  setNewWalletBalance(wallet.balance.toString())
+                }}
+              >
+                <MochiCard style={styles.walletCard}>
+                  <View style={styles.walletHeader}>
+                    <Text style={styles.walletIcon}>{wallet.icon || '🪙'}</Text>
+                    <Text style={styles.walletName}>{wallet.name}</Text>
+                  </View>
+                  <Text style={styles.walletBalance}>{formatVND(wallet.balance)}</Text>
+                </MochiCard>
+              </TouchableOpacity>
             ))
           )}
         </ScrollView>
@@ -384,6 +424,42 @@ export default function FinanceScreen() {
             loading={submitting}
             disabled={submitting}
             onPress={handleSubmitTransaction}
+            style={{ flex: 1.5 }}
+          />
+        </View>
+      </KeyboardSafeModal>
+
+      {/* Keyboard-Safe Adjust Wallet Balance Modal */}
+      <KeyboardSafeModal
+        visible={!!editingWallet}
+        onClose={() => setEditingWallet(null)}
+      >
+        <Text style={styles.modalTitle}>
+          Sửa / Chốt số dư {editingWallet?.icon} {editingWallet?.name}
+        </Text>
+        <Text style={{ fontSize: 13, color: colors.chocolateMuted, marginBottom: spacing.md, lineHeight: 18 }}>
+          Nhập số dư thực tế hiện tại. Các giao dịch sau thời điểm này sẽ tự động được cộng/trừ chính xác.
+        </Text>
+        <MochiInput
+          label="Số dư thực tế (VNĐ) *"
+          placeholder="0"
+          value={newWalletBalance}
+          onChangeText={setNewWalletBalance}
+          keyboardType="numeric"
+          autoFocus
+        />
+        <View style={styles.modalActions}>
+          <MochiButton
+            title="Hủy"
+            variant="ghost"
+            onPress={() => setEditingWallet(null)}
+            style={{ flex: 1 }}
+          />
+          <MochiButton
+            title="Xác nhận"
+            loading={submittingWalletBalance}
+            disabled={submittingWalletBalance}
+            onPress={handleSaveWalletBalance}
             style={{ flex: 1.5 }}
           />
         </View>

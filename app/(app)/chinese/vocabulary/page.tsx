@@ -502,7 +502,7 @@ function VocabPageContent() {
       `"${v.hanzi}","${v.pinyin}","${v.meaning}","${v.word_type ?? ''}","${v.memory_level !== 'not_learned' ? 'Đã học' : 'Chưa học'}","${MEMORY_LEVEL_LABELS[v.memory_level]?.label ?? ''}",${v.correct_count},${v.incorrect_count}`
     )
     const csv = [header, ...rows].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'tu-vung.csv'; a.click()
     URL.revokeObjectURL(url)

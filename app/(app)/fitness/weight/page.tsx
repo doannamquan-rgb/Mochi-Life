@@ -9,6 +9,7 @@ import { notifyDataChanged } from '@/lib/events'
 import { useMochiReaction } from '@/hooks/use-mochi-reaction'
 import { toast } from 'sonner'
 import { formatDate, todayString } from '@/lib/date-utils'
+import { calculateBMI } from '@mochi/shared'
 import type { WeightLog, WeightGoal } from '@/lib/types'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { format, parseISO } from 'date-fns'
@@ -223,7 +224,7 @@ function WeightForm({ onClose, onSaved, existing }: {
 
 function WeightPageContent() {
   const searchParams = useSearchParams()
-  const { user } = useUser()
+  const { user, profile } = useUser()
   const [logs, setLogs] = useState<WeightLog[]>([])
   const [goal, setGoal] = useState<WeightGoal | null>(null)
   const [loading, setLoading] = useState(true)
@@ -262,12 +263,13 @@ function WeightPageContent() {
   }
 
   function exportCSV() {
-    const header = 'Ngày,Cân nặng (kg),Vòng eo (cm),Vòng hông (cm),Ghi chú'
-    const rows = logs.map(l =>
-      `${formatDate(l.log_date)},${l.weight},${l.waist_cm ?? ''},${l.hip_cm ?? ''},"${l.note ?? ''}"` 
-    )
+    const header = 'Ngày,Cân nặng (kg),BMI,Vòng eo (cm),Vòng hông (cm),Ghi chú'
+    const rows = logs.map(l => {
+      const bmiVal = profile?.height_cm ? calculateBMI(l.weight, profile.height_cm).toFixed(1) : ''
+      return `${formatDate(l.log_date)},${l.weight},${bmiVal},${l.waist_cm ?? ''},${l.hip_cm ?? ''},"${l.note ?? ''}"`
+    })
     const csv = [header, ...rows].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'can-nang.csv'; a.click()
     URL.revokeObjectURL(url)
