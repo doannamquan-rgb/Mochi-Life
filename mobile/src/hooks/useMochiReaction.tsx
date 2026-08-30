@@ -139,7 +139,9 @@ export function ReactionProvider({ children }: { children: React.ReactNode }) {
             styles.toastContainer,
             {
               top: Math.max(insets.top + 8, 20),
+              // eslint-disable-next-line react-hooks/refs -- Animated.Value is an imperative handle, not a render value
               transform: [{ translateY: translateYRef.current }],
+              // eslint-disable-next-line react-hooks/refs -- same as above
               opacity: opacityRef.current,
             },
           ]}
