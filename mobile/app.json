@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mochi Life",
     "slug": "mochi-life",
-    "version": "6.2.0",
+    "version": "6.3.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "mochilife",
@@ -43,7 +43,7 @@
     "updates": {
       "url": "https://u.expo.dev/e437fc67-2322-41a3-a62d-cc8fffc11aa2"
     },
-    "runtimeVersion": "6.2.0",
+    "runtimeVersion": "6.3.0",
     "experiments": {
       "typedRoutes": true
     },
