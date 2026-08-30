@@ -14,10 +14,13 @@ export function useAppLifecycleResync() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const userId = user?.id
-  const lastResyncRef = useRef<number>(Date.now())
+  const lastResyncRef = useRef<number>(0)
 
   useEffect(() => {
     if (!userId) return
+
+    // Initialize resync timestamp on mount (inside effect to avoid impure call during render)
+    lastResyncRef.current = Date.now()
 
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
       if (nextState === 'active') {

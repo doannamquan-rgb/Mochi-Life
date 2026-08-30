@@ -105,7 +105,7 @@ export function useAppUpdates() {
     if (Updates.isEnabled) {
       try {
         await Updates.reloadAsync()
-      } catch (err) {
+      } catch {
         // Fallback
       }
     }

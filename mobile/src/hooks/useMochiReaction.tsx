@@ -29,20 +29,20 @@ export function ReactionProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth()
   const insets = useSafeAreaInsets()
   const [currentReaction, setCurrentReaction] = useState<MochiReaction | null>(null)
-  const translateY = useRef(new Animated.Value(-150)).current
-  const opacity = useRef(new Animated.Value(0)).current
+  const translateYRef = useRef(new Animated.Value(-150))
+  const opacityRef = useRef(new Animated.Value(0))
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingEventsRef = useRef<Set<string>>(new Set())
 
   const dismissToast = useCallback(() => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
     Animated.parallel([
-      Animated.timing(translateY, {
+      Animated.timing(translateYRef.current, {
         toValue: -150,
         duration: 250,
         useNativeDriver: true,
       }),
-      Animated.timing(opacity, {
+      Animated.timing(opacityRef.current, {
         toValue: 0,
         duration: 200,
         useNativeDriver: true,
@@ -50,24 +50,24 @@ export function ReactionProvider({ children }: { children: React.ReactNode }) {
     ]).start(() => {
       setCurrentReaction(null)
     })
-  }, [translateY, opacity])
+  }, [translateYRef, opacityRef])
 
   const showReaction = useCallback(
     (reaction: MochiReaction) => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
       setCurrentReaction(reaction)
 
-      translateY.setValue(-100)
-      opacity.setValue(0)
+      translateYRef.current.setValue(-100)
+      opacityRef.current.setValue(0)
 
       Animated.parallel([
-        Animated.spring(translateY, {
+        Animated.spring(translateYRef.current, {
           toValue: 0,
           useNativeDriver: true,
           tension: 80,
           friction: 9,
         }),
-        Animated.timing(opacity, {
+        Animated.timing(opacityRef.current, {
           toValue: 1,
           duration: 250,
           useNativeDriver: true,
@@ -78,7 +78,7 @@ export function ReactionProvider({ children }: { children: React.ReactNode }) {
         dismissToast()
       }, 5500)
     },
-    [dismissToast, translateY, opacity]
+    [dismissToast, translateYRef, opacityRef]
   )
 
   const triggerReaction = useCallback(
@@ -110,7 +110,7 @@ export function ReactionProvider({ children }: { children: React.ReactNode }) {
         if (data?.reaction) {
           showReaction(data.reaction)
         }
-      } catch (err) {
+      } catch {
         // Fire-and-forget: fail silently
       } finally {
         pendingEventsRef.current.delete(eventType)
@@ -139,8 +139,8 @@ export function ReactionProvider({ children }: { children: React.ReactNode }) {
             styles.toastContainer,
             {
               top: Math.max(insets.top + 8, 20),
-              transform: [{ translateY }],
-              opacity,
+              transform: [{ translateY: translateYRef.current }],
+              opacity: opacityRef.current,
             },
           ]}
         >
