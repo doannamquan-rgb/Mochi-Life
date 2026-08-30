@@ -28,11 +28,11 @@ export function useAppUpdates() {
     isDownloading: false,
     isUpdateAvailable: false,
     isUpdateDownloaded: false,
-    appVersion: Constants.expoConfig?.version || '6.1.0',
+    appVersion: Constants.expoConfig?.version || '6.1.1',
     runtimeVersion:
       typeof Updates.runtimeVersion === 'string'
         ? Updates.runtimeVersion
-        : Constants.expoConfig?.version || '6.1.0',
+        : Constants.expoConfig?.version || '6.1.1',
     channel: Updates.channel || 'development',
     updateId: Updates.updateId || null,
     createdAt: Updates.createdAt || null,
