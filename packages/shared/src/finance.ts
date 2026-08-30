@@ -1,14 +1,14 @@
-﻿import type { Wallet, WalletBalanceSnapshot, Transaction } from './types'
+import type { Wallet, WalletBalanceSnapshot, Transaction } from './types'
 
 /**
  * Calculates the balance of a wallet as of a given date (default today).
- * Uses the latest balance snapshot on or before tDate as the reconciliation anchor,
- * and sums subsequent transactions up to tDate.
+ * Uses the latest balance snapshot on or before atDate as the reconciliation anchor,
+ * and sums subsequent transactions up to atDate.
  *
  * Edge case handling:
  * - When a snapshot is created at date D, transactions BEFORE date D are considered
  *   reconciled and already accounted for in the snapshot balance.
- * - If no snapshot exists on or before tDate, it falls back to the wallet base balance.
+ * - If no snapshot exists on or before atDate, it falls back to the wallet base balance.
  */
 export function calculateWalletBalance(
   wallet: Wallet,

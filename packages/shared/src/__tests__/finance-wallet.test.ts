@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { calculateWalletBalance, calculateTotalWalletBalance } from '../finance'
 import type { Wallet, WalletBalanceSnapshot, Transaction } from '../types'
 
