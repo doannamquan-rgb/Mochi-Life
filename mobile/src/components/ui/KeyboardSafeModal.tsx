@@ -65,7 +65,10 @@ export function KeyboardSafeModal({
         <View
           style={[
             styles.cardSheet,
-            { paddingBottom: Math.max(insets.bottom, 20) },
+            {
+              paddingBottom: Math.max(insets.bottom, 20),
+              maxHeight: `${Math.round(maxHeightRatio * 100)}%`,
+            },
             contentStyle,
           ]}
         >
@@ -109,7 +112,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,
-    maxHeight: '90%',
     shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
