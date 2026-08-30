@@ -27,7 +27,7 @@ export function KeyboardAwareContainer({
   return (
     <SafeAreaView style={[styles.safeArea, style]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={keyboardVerticalOffset}
         style={styles.keyboardView}
       >
