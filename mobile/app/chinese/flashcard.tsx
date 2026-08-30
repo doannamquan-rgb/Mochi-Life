@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useChinese } from '../../src/hooks/useChinese'
@@ -6,6 +6,7 @@ import { useMochiReaction } from '../../src/hooks/useMochiReaction'
 import { MochiCard } from '../../src/components/ui/MochiCard'
 import { MochiButton } from '../../src/components/ui/MochiButton'
 import type { ReviewRating } from '@mochi/shared'
+import { calculateNextReview, formatInterval } from '@mochi/shared'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 
 export default function FlashcardScreen() {
@@ -20,6 +21,21 @@ export default function FlashcardScreen() {
   const [submitting, setSubmitting] = useState(false)
 
   const currentWord = studyList[currentIndex]
+
+  // Pre-compute real SM-2 intervals for current word so button labels are accurate
+  const intervalPreviews = useMemo(() => {
+    if (!currentWord) return { forgot: '1 ngày', hard: '1 ngày', remembered: '3 ngày', easy: '7 ngày' }
+    const state = {
+      interval_days: currentWord.sr_interval_days || 0,
+      ease_factor: currentWord.sr_ease_factor || 2.5,
+      repetitions: currentWord.sr_repetitions || 0,
+      next_review_at: new Date(currentWord.next_review_at || new Date()),
+    }
+    const ratings: ReviewRating[] = ['forgot', 'hard', 'remembered', 'easy']
+    return Object.fromEntries(
+      ratings.map(r => [r, formatInterval(calculateNextReview(state, r).interval_days)])
+    ) as Record<ReviewRating, string>
+  }, [currentWord])
 
   const handleRating = async (rating: ReviewRating) => {
     if (!currentWord || submitting) return
@@ -109,7 +125,7 @@ export default function FlashcardScreen() {
             disabled={submitting}
           >
             <Text style={[styles.rateBtnTitle, { color: colors.peachDark }]}>Quên 😿</Text>
-            <Text style={styles.rateBtnSub}>1 ngày</Text>
+            <Text style={styles.rateBtnSub}>{intervalPreviews.forgot}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -118,7 +134,7 @@ export default function FlashcardScreen() {
             disabled={submitting}
           >
             <Text style={[styles.rateBtnTitle, { color: colors.chocolate }]}>Khó 😕</Text>
-            <Text style={styles.rateBtnSub}>2 ngày</Text>
+            <Text style={styles.rateBtnSub}>{intervalPreviews.hard}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -127,7 +143,7 @@ export default function FlashcardScreen() {
             disabled={submitting}
           >
             <Text style={[styles.rateBtnTitle, { color: colors.mintDark }]}>Nhớ 😊</Text>
-            <Text style={styles.rateBtnSub}>4 ngày</Text>
+            <Text style={styles.rateBtnSub}>{intervalPreviews.remembered}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -136,7 +152,7 @@ export default function FlashcardScreen() {
             disabled={submitting}
           >
             <Text style={[styles.rateBtnTitle, { color: colors.lavenderDark }]}>Dễ 🐱✨</Text>
-            <Text style={styles.rateBtnSub}>7 ngày</Text>
+            <Text style={styles.rateBtnSub}>{intervalPreviews.easy}</Text>
           </TouchableOpacity>
         </View>
       ) : (
