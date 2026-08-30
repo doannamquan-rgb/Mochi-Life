@@ -197,8 +197,8 @@ export default function FinanceScreen() {
                 <ArrowDownLeft size={16} color={colors.mintDark} />
               </View>
               <View>
-                <Text style={styles.summaryLabel}>Thu tháng này</Text>
-                <Text style={styles.incomeValue}>+{formatVND(monthIncome)}</Text>
+                <Text style={styles.summarySub}>Thu tháng này</Text>
+                <Text style={[styles.summaryNum, { color: colors.mintDark }]}>+{formatVND(monthIncome)}</Text>
               </View>
             </View>
 
@@ -207,8 +207,8 @@ export default function FinanceScreen() {
                 <ArrowUpRight size={16} color={colors.peachDark} />
               </View>
               <View>
-                <Text style={styles.summaryLabel}>Chi tháng này</Text>
-                <Text style={styles.expenseValue}>-{formatVND(monthExpense)}</Text>
+                <Text style={styles.summarySub}>Chi tháng này</Text>
+                <Text style={[styles.summaryNum, { color: colors.peachDark }]}>-{formatVND(monthExpense)}</Text>
               </View>
             </View>
           </View>
