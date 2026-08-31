@@ -100,24 +100,38 @@ export function useAppUpdates() {
     }
   }, [])
 
-  // Reload the application to apply the downloaded update
+  // Reload the application to apply the downloaded update.
+  // On Android: BackHandler.exitApp() causes a clean native restart,
+  // avoiding the white screen issue caused by Updates.reloadAsync().
+  // On iOS: reloadAsync() works fine.
   const reloadAndApplyUpdate = useCallback(async () => {
-    if (Updates.isEnabled) {
+    if (!Updates.isEnabled) return
+    try {
+      const { Platform, BackHandler } = require('react-native')
+      if (Platform.OS === 'android') {
+        // Give a brief moment for any UI state to settle, then force-close.
+        // Android will restart the app cleanly from the newly downloaded bundle.
+        setTimeout(() => {
+          BackHandler.exitApp()
+        }, 300)
+      } else {
+        await Updates.reloadAsync()
+      }
+    } catch {
+      // Last-resort fallback
       try {
         await Updates.reloadAsync()
-      } catch {
-        // Fallback
-      }
+      } catch {}
     }
   }, [])
 
   // Initial background update check on app launch
   useEffect(() => {
     if (Updates.isEnabled && !__DEV__) {
-      // Delay initial check by 3 seconds to prioritize UI render
+      // Delay initial check by 5 seconds to let UI fully mount and stabilize
       const timer = setTimeout(() => {
         checkForUpdate().catch(() => {})
-      }, 3000)
+      }, 5000)
       return () => clearTimeout(timer)
     }
   }, [checkForUpdate])
