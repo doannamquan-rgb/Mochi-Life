@@ -64,11 +64,24 @@ npx eas update --channel production --message "Release v6.0.x - Ghi chú cập n
 
 ---
 
-## 4. Quy Tắc Quyết Định: Khi Nào Cần Build APK Mới?
+## 4. Quy Tắc Phiên Bản: App Version vs Runtime Version
 
-### ✅ Cần build Native APK/AAB mới khi:
+| Trường | Ví dụ | Ý nghĩa | Khi nào thay đổi? |
+| :--- | :--- | :--- | :--- |
+| `version` (app.json) | `6.3.0` | Marketing / User-facing Version | Thay đổi theo từng đợt release tính năng lớn/nhỏ |
+| `runtimeVersion` (app.json) | `6.1.0` | Khóa tương thích Native Binary | **CHỈ ĐỔI KHI BUILD APK MỚI** (thay đổi native code/SDK) |
+
+> [!IMPORTANT]
+> **Tại sao `runtimeVersion` giữ ở `6.1.0` khi `version` là `6.3.0`?**
+> Binary APK Android đã cài trên máy người dùng được build với `runtimeVersion = 6.1.0`. Khi phát hành bản vá JavaScript qua OTA (`eas update --channel production`), EAS sẽ gán tag `runtimeVersion = 6.1.0` cho bundle. Thiết bị có runtime `6.1.0` sẽ nhận và áp dụng bản cập nhật ngay lập tức mà không yêu cầu người dùng cài lại APK.
+
+---
+
+## 5. Quy Tắc Quyết Định: Khi Nào Cần Build APK Mới?
+
+### ✅ BẮT BUỘC build Native APK/AAB mới khi:
 1. Nâng cấp phiên bản Expo SDK (ví dụ SDK 57 -> SDK 58).
-2. Thêm hoặc cập nhật thư viện có mã nguồn Native (Java / Kotlin / C++ / Objective-C).
+2. Thêm, xóa hoặc cập nhật thư viện có mã nguồn Native (Java / Kotlin / C++ / Objective-C).
 3. Thay đổi cấu hình quyền hạn (permissions), package identifier, hoặc icon trong `app.json`.
 4. Thay đổi cấu hình `runtimeVersion` policy trong `app.json`.
 
@@ -80,13 +93,27 @@ npx eas update --channel production --message "Release v6.0.x - Ghi chú cập n
 
 ---
 
-## 5. Kế Hoạch Rollback Khi Gặp Sự Cố OTA
+## 6. Bảng Lệnh EAS Thường Dùng
 
-Nếu một bản OTA gặp lỗi nghiêm trọng, bạn có thể tái phát hành bản OTA an toàn trước đó ngay lập tức mà không cần tạo build mới:
 ```bash
-# Xem danh sách các bản update gần nhất
+# 1. Kiểm tra danh sách channel
+npx eas channel:list
+
+# 2. Kiểm tra các bản update đã publish trên channel
 npx eas update:list --channel production
 
-# Re-publish bản cập nhật ổn định
+# 3. Publish bản OTA mới lên Production
+npx eas update --channel production --message "Release v6.3.0.x - OTA bugfix"
+
+# 4. Publish bản OTA mới lên Preview (Test)
+npx eas update --channel preview --message "Preview test OTA"
+
+# 5. Rollback về bản OTA ổn định trước đó
 npx eas update:republish --channel production --group <UPDATE_GROUP_ID_STABLE>
+
+# 6. Build APK Preview mới
+npx eas build -p android --profile preview
+
+# 7. Build AAB Production mới (Google Play)
+npx eas build -p android --profile production
 ```

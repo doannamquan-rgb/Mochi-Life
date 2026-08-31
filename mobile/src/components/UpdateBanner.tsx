@@ -1,15 +1,16 @@
 import React from 'react'
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { Sparkles, RefreshCw, X } from 'lucide-react-native'
 import { colors, radius, typography, spacing } from '../theme/tokens'
 
 interface UpdateBannerProps {
   visible: boolean
+  isReloading?: boolean
   onRestart: () => void
   onDismiss: () => void
 }
 
-export function UpdateBanner({ visible, onRestart, onDismiss }: UpdateBannerProps) {
+export function UpdateBanner({ visible, isReloading = false, onRestart, onDismiss }: UpdateBannerProps) {
   if (!visible) return null
 
   return (
@@ -18,9 +19,11 @@ export function UpdateBanner({ visible, onRestart, onDismiss }: UpdateBannerProp
         <View style={styles.header}>
           <Sparkles size={18} color={colors.chocolate} />
           <Text style={styles.title}>Mochi Life có bản cập nhật mới! ✨</Text>
-          <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <X size={16} color={colors.chocolateMuted} />
-          </TouchableOpacity>
+          {!isReloading && (
+            <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={16} color={colors.chocolateMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <Text style={styles.desc}>
@@ -28,13 +31,29 @@ export function UpdateBanner({ visible, onRestart, onDismiss }: UpdateBannerProp
         </Text>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.dismissBtn} onPress={onDismiss}>
-            <Text style={styles.dismissText}>Để sau</Text>
-          </TouchableOpacity>
+          {!isReloading && (
+            <TouchableOpacity style={styles.dismissBtn} onPress={onDismiss}>
+              <Text style={styles.dismissText}>Để sau</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity style={styles.restartBtn} onPress={onRestart}>
-            <RefreshCw size={14} color={colors.chocolate} />
-            <Text style={styles.restartText}>Cập nhật & Khởi động lại</Text>
+          <TouchableOpacity
+            style={[styles.restartBtn, isReloading && styles.restartBtnDisabled]}
+            onPress={onRestart}
+            disabled={isReloading}
+            activeOpacity={0.8}
+          >
+            {isReloading ? (
+              <>
+                <ActivityIndicator size="small" color={colors.chocolate} />
+                <Text style={styles.restartText}>Đang khởi động lại...</Text>
+              </>
+            ) : (
+              <>
+                <RefreshCw size={14} color={colors.chocolate} />
+                <Text style={styles.restartText}>Cập nhật & Khởi động lại</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -110,6 +129,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+  },
+  restartBtnDisabled: {
+    opacity: 0.7,
+    backgroundColor: colors.cream,
   },
   restartText: {
     ...typography.caption,

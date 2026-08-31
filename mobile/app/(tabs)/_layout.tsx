@@ -25,7 +25,7 @@ export default function TabsLayout() {
   useAppLifecycleResync()
 
   // OTA Updates hook
-  const { isUpdateDownloaded, reloadAndApplyUpdate } = useAppUpdates()
+  const { isUpdateDownloaded, isReloading, reloadAndApplyUpdate } = useAppUpdates()
 
   if (loading) {
     return (
@@ -115,6 +115,7 @@ export default function TabsLayout() {
       {/* In-app floating OTA update notification */}
       <UpdateBanner
         visible={isUpdateDownloaded && !bannerDismissed}
+        isReloading={isReloading}
         onRestart={reloadAndApplyUpdate}
         onDismiss={() => setBannerDismissed(true)}
       />

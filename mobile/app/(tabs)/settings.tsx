@@ -42,10 +42,17 @@ export default function SettingsScreen() {
     appVersion,
     runtimeVersion,
     channel,
+    status: otaStatus,
     isChecking,
     isDownloading,
     isUpdateDownloaded,
     isUpdateAvailable,
+    isReloading,
+    isEmbeddedLaunch,
+    isEmergencyLaunch,
+    emergencyLaunchReason,
+    runningUpdateId,
+    downloadedUpdateId,
     lastCheckedAt,
     error: updateError,
     checkForUpdate,
@@ -187,7 +194,7 @@ export default function SettingsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.updateTitle}>Mochi Life OTA Engine</Text>
               <Text style={styles.updateSub}>
-                Phiên bản {appVersion} (build 6.3.0.1) • Kênh {channel}
+                Phiên bản {appVersion} (build 6.3.0.1 • OTA TEST 001) • Kênh {channel}
               </Text>
             </View>
             {isChecking && <ActivityIndicator size="small" color={colors.chocolate} />}
@@ -198,16 +205,42 @@ export default function SettingsScreen() {
               • Runtime Version: <Text style={{ fontWeight: '700' }}>{runtimeVersion}</Text>
             </Text>
             <Text style={styles.updateDetailText}>
-              • Bản vá / Build: <Text style={{ fontWeight: '700', color: colors.mintDark }}>v6.3.0.1 (Calorie & Wallet Snapshot)</Text>
+              • Nguồn khởi động:{' '}
+              <Text
+                style={{
+                  fontWeight: '700',
+                  color: isEmergencyLaunch
+                    ? colors.peachDark
+                    : isEmbeddedLaunch
+                      ? colors.chocolateLight
+                      : colors.mintDark,
+                }}
+              >
+                {isEmergencyLaunch
+                  ? 'Khôi phục khẩn cấp (Rollback)'
+                  : isEmbeddedLaunch
+                    ? 'Bản dựng nhúng (Embedded)'
+                    : `Bản OTA (${runningUpdateId ? runningUpdateId.slice(0, 8) + '...' : 'Active'})`}
+              </Text>
             </Text>
+            {isEmergencyLaunch && emergencyLaunchReason && (
+              <Text style={[styles.updateDetailText, { color: colors.peachDark, fontWeight: '600' }]}>
+                ⚠️ Lý do khôi phục: {emergencyLaunchReason}
+              </Text>
+            )}
+            {isUpdateDownloaded && (
+              <Text style={[styles.updateDetailText, { color: colors.mintDark, fontWeight: '700' }]}>
+                ✨ Bản cập nhật mới đã sẵn sàng áp dụng ({downloadedUpdateId ? downloadedUpdateId.slice(0, 8) + '...' : 'Downloaded'})
+              </Text>
+            )}
             {lastCheckedAt && (
               <Text style={styles.updateDetailText}>
                 • Kiểm tra gần nhất: {lastCheckedAt.toLocaleTimeString('vi-VN')}
               </Text>
             )}
-            {updateError && (
+            {updateError && !isEmergencyLaunch && (
               <Text style={[styles.updateDetailText, { color: colors.peachDark }]}>
-                • {updateError}
+                • Lỗi: {updateError}
               </Text>
             )}
           </View>
@@ -215,20 +248,28 @@ export default function SettingsScreen() {
           <View style={styles.updateActions}>
             {isUpdateDownloaded ? (
               <MochiButton
-                title="Cập nhật & Khởi động lại"
+                title={isReloading ? 'Đang khởi động lại...' : 'Cập nhật & Khởi động lại'}
                 size="sm"
                 icon={<RefreshCw size={14} color={colors.chocolate} />}
+                loading={isReloading}
+                disabled={isReloading}
                 onPress={reloadAndApplyUpdate}
                 style={{ flex: 1 }}
               />
             ) : (
               <MochiButton
-                title={isChecking ? 'Đang kiểm tra...' : 'Kiểm tra cập nhật'}
+                title={
+                  isChecking
+                    ? 'Đang kiểm tra...'
+                    : isDownloading
+                      ? 'Đang tải bản cập nhật...'
+                      : 'Kiểm tra cập nhật'
+                }
                 variant="secondary"
                 size="sm"
                 icon={<RefreshCw size={14} color={colors.chocolate} />}
                 loading={isChecking || isDownloading}
-                disabled={isChecking || isDownloading}
+                disabled={isChecking || isDownloading || isReloading}
                 onPress={handleCheckUpdate}
                 style={{ flex: 1 }}
               />
@@ -268,7 +309,7 @@ export default function SettingsScreen() {
 
         {/* Footer info */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>🐱 Mochi Life v{appVersion} (build 6.3.0.1) • Made with ❤️</Text>
+          <Text style={styles.footerText}>🐱 Mochi Life v{appVersion} (build 6.3.0.1 • OTA TEST 001) • Made with ❤️</Text>
           <Text style={styles.footerSubtext}>Next.js + Expo Native + Shared Core</Text>
         </View>
       </ScrollView>
