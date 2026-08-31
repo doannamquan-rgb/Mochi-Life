@@ -32,7 +32,7 @@ export function useAppUpdates() {
     runtimeVersion:
       typeof Updates.runtimeVersion === 'string'
         ? Updates.runtimeVersion
-        : Constants.expoConfig?.version || '6.3.0',
+        : Constants.expoConfig?.version || '6.2.0',
     channel: Updates.channel || 'development',
     updateId: Updates.updateId || null,
     createdAt: Updates.createdAt || null,
