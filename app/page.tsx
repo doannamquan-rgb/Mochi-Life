@@ -55,8 +55,19 @@ export default function HomePage() {
       </section>
       <section id="approach" className={styles.approach}><div><span className={styles.eyebrow}>TIẾN BỘ THEO NHỊP CỦA BẠN</span><h2>Một chút hôm nay.<br />Khác biệt ngày mai.</h2><p>Mochi giúp bạn nhìn thấy những nỗ lực nhỏ, để mỗi ngày đều có một lý do tiếp tục.</p></div><ol className={styles.steps}><li><span>01</span><div><h3>Chọn điều bạn muốn chăm sóc</h3><p>Một mục tiêu, một buổi học hay một thói quen tốt.</p></div></li><li><span>02</span><div><h3>Ghi lại từng bước tiến</h3><p>Đưa học tập, vận động và chi tiêu vào nhịp sống mỗi ngày.</p></div></li><li><span>03</span><div><h3>Nhìn lại và tiếp tục</h3><p>Theo dõi tiến độ, ghi nhận thành tích và điều chỉnh mục tiêu.</p></div></li></ol></section>
       <section id="ai" className={styles.ai}><div className={styles.aiIntro}><span className={styles.aiBadge}><Sparkles size={15} /> ĐANG PHÁT TRIỂN</span><h2>Một người bạn AI.<br />Đang được vun đắp.</h2><p>Chúng tôi đang phát triển Mochi AI để hành trình chăm sóc bản thân có thêm sự đồng hành. Các khả năng dưới đây là định hướng phát triển, chưa được giới thiệu là tính năng hoàn thiện.</p><span className={styles.aiSignature}><Cat size={22} /> Có thêm Mochi, có thêm động lực.</span></div><div className={styles.aiIdeas}><div><span>01 / TRÒ CHUYỆN</span><h3>Đồng hành cùng mục tiêu</h3><p>Hướng tới trò chuyện và gợi ý phù hợp với hành trình cá nhân.</p></div><div><span>02 / GÓC NHÌN MỖI NGÀY</span><h3>Hiểu những bước tiến nhỏ</h3><p>Đang phát triển bản tổng kết và gợi ý từ hoạt động hằng ngày.</p></div><div><span>03 / ĐỘNG VIÊN</span><h3>Thêm một lời khích lệ</h3><p>Khám phá cách Mochi phản hồi theo những cột mốc của bạn.</p></div></div></section>
+      <section id="about" className={styles.about} aria-labelledby="about-title">
+        <div><span className={styles.eyebrow}>VỀ DỰ ÁN</span><h2 id="about-title">About Mochi Life</h2><p>Mochi Life là dự án kết nối theo dõi mục tiêu, học HSK, chăm sóc sức khỏe và quản lý chi tiêu trong một không gian. Được thành lập năm 2026 tại Thành phố Hồ Chí Minh, dự án do Quan Doan sáng lập và dẫn dắt phát triển.</p></div>
+        <dl className={styles.aboutDetails}>
+          <div><dt>Project</dt><dd>Mochi Life</dd></div>
+          <div><dt>Founder &amp; Lead Developer</dt><dd>Quan Doan</dd></div>
+          <div><dt>Founded</dt><dd>2026</dd></div>
+          <div><dt>Location</dt><dd>Ho Chi Minh City, Vietnam</dd></div>
+          <div><dt>Email</dt><dd><a href="mailto:quan@mochilife.site">quan@mochilife.site</a></dd></div>
+          <div><dt>Website</dt><dd><a href="https://mochilife.site">https://mochilife.site</a></dd></div>
+        </dl>
+      </section>
       <section className={styles.cta}><span aria-hidden="true">✳</span><h2>Cho những điều tốt đẹp<br />một chỗ trong ngày của bạn.</h2><p>Hành trình của bạn. Nhịp điệu của bạn. Mochi đồng hành.</p><Link href="/login" className={styles.primary}>Bắt đầu cùng Mochi <ArrowRight size={19} /></Link></section>
     </main>
-    <footer className={styles.footer}><Link href="/" className={styles.brand}><Cat size={22} /> Mochi Life<span className={styles.brandDot}>.</span></Link><p>Từng bước nhỏ, mỗi ngày.</p><Link href="/login">Login <ArrowUpRight size={15} /></Link></footer>
+    <footer className={styles.footer}><Link href="/" className={styles.brand}><Cat size={22} /> Mochi Life<span className={styles.brandDot}>.</span></Link><p>Từng bước nhỏ, mỗi ngày.</p><a className={styles.footerContact} href="mailto:quan@mochilife.site">quan@mochilife.site</a><Link href="/login">Login <ArrowUpRight size={15} /></Link></footer>
   </div>
 }
