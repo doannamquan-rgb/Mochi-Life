@@ -1,6 +1,7 @@
 import * as Updates from 'expo-updates'
 import Constants from 'expo-constants'
 import { useState, useEffect, useCallback } from 'react'
+import { Platform, BackHandler } from 'react-native'
 
 export interface UpdateInfo {
   isEnabled: boolean
@@ -107,7 +108,6 @@ export function useAppUpdates() {
   const reloadAndApplyUpdate = useCallback(async () => {
     if (!Updates.isEnabled) return
     try {
-      const { Platform, BackHandler } = require('react-native')
       if (Platform.OS === 'android') {
         // Give a brief moment for any UI state to settle, then force-close.
         // Android will restart the app cleanly from the newly downloaded bundle.
