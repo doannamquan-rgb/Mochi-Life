@@ -12,7 +12,14 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
+    "typecheck:shared": "npm run typecheck --workspace=@mochi/shared",
+    "typecheck:mobile": "npm run typecheck --workspace=mochi-life-mobile",
+    "typecheck:all": "npm run typecheck && npm run typecheck:shared && npm run typecheck:mobile",
     "lint": "eslint .",
+    "test:watch": "vitest",
+    "build:mobile": "npm run build:local --workspace=mochi-life-mobile",
+    "check": "npm run lint && npm run typecheck:all && npm test",
+    "verify": "npm run check && npm run build && npm run build:mobile",
     "eas-build-pre-install": "npm install --package-lock-only"
   },
   "dependencies": {

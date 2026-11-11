@@ -130,18 +130,30 @@ MOCHI_AI_ENABLED=true
 Hệ thống được trang bị bộ lệnh kiểm tra toàn diện:
 
 ```bash
-# 1. Chạy toàn bộ Unit Tests (11 test suites / 78 tests)
+# 1. Chạy toàn bộ Unit Tests (Web/server và shared)
 npm test
 
 # 2. Kiểm tra TypeScript & Next.js Type Generation
-npm run typecheck
+npm run typecheck:all
 
 # 3. Quét tĩnh mã nguồn với ESLint Flat Config
 npm run lint
 
-# 4. Kiểm tra Build Production Bundle & 37 Routes
+# 4. Kiểm tra Build Production Bundle Web
 npm run build
+
+# 5. Xuất bundle Android/iOS cục bộ (không publish)
+npm run build:mobile
+
+# 6. Chạy lint + toàn bộ typecheck + tests
+npm run check
+
+# 7. Chạy toàn bộ QA, build Web và xuất bundle Mobile
+npm run verify
 ```
+
+Quy trình coding autonomous và tiêu chí hoàn thành nằm trong [AGENTS.md](AGENTS.md).
+Xem [báo cáo thiết lập và giới hạn môi trường](docs/AUTONOMOUS_WORKFLOW.md) để biết các quyền chạy tiến trình/mạng cần thiết và phạm vi kiểm chứng Mobile.
 
 ---
 

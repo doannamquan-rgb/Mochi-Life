@@ -1,4 +1,4 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- Migration 015: Calorie Intake Tracking Table
 -- ==============================================================================
 
@@ -22,20 +22,20 @@ CREATE INDEX IF NOT EXISTS idx_calorie_intake_user_date
 ALTER TABLE public.calorie_intake_entries ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
-CREATE POLICY Users can view their own calorie intake entries
+CREATE POLICY "Users can view their own calorie intake entries"
   ON public.calorie_intake_entries FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY Users can insert their own calorie intake entries
+CREATE POLICY "Users can insert their own calorie intake entries"
   ON public.calorie_intake_entries FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY Users can update their own calorie intake entries
+CREATE POLICY "Users can update their own calorie intake entries"
   ON public.calorie_intake_entries FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY Users can delete their own calorie intake entries
+CREATE POLICY "Users can delete their own calorie intake entries"
   ON public.calorie_intake_entries FOR DELETE
   USING (auth.uid() = user_id);
 
@@ -46,7 +46,7 @@ CREATE TRIGGER trigger_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- Add to Realtime Publication if available
-DO 
+DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
     IF NOT EXISTS (
@@ -56,6 +56,6 @@ BEGIN
       ALTER PUBLICATION supabase_realtime ADD TABLE public.calorie_intake_entries;
     END IF;
   END IF;
-END ;
+END $$;
 
 COMMIT;

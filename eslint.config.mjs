@@ -11,6 +11,13 @@ const eslintConfig = defineConfig([
     'build/**',
     'next-env.d.ts',
     'node_modules/**',
+    '**/node_modules/**',
+    '**/.expo/**',
+    '**/dist/**',
+    '**/coverage/**',
+    'mobile/android/**',
+    'mobile/ios/**',
+    'mobile/expo-env.d.ts',
   ]),
   {
     rules: {

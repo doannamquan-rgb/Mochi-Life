@@ -9,6 +9,7 @@
 
 | Feature Domain | Feature Capability | Classification | Web Status | Mobile Status | Single Source of Truth / Backend |
 | :--- | :--- | :---: | :---: | :---: | :--- |
+| **Product Website** | Public landing page at `/` (features, AI roadmap, Login) | `WEB-ONLY` | **DONE** | *Not applicable* | Public marketing entry point; native app keeps its existing authentication flow |
 | **Authentication** | Email & Password Login / Register | `CROSS-PLATFORM` | **DONE** | **DONE** | Supabase Auth |
 | | Forgot Password & Recovery Email | `CROSS-PLATFORM` | **DONE** | **DONE** | Supabase Auth |
 | | Reset Password (PKCE Standalone) | `CROSS-PLATFORM` | **DONE** | **DONE** | Supabase Auth (`/reset-password` & `mochilife://reset-password`) |
