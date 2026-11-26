@@ -2,17 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase/auth-helper'
 import { checkRateLimit } from '@/lib/ai/rate-limit'
 import { generateSmartReaction } from '@/lib/ai/reactions/engine'
-import type { MochiReactionEvent } from '@/lib/ai/reactions/types'
 import { z } from 'zod'
-
-const VALID_EVENTS: MochiReactionEvent[] = [
-  'exercise_logged',
-  'weight_logged',
-  'transaction_expense_created',
-  'transaction_income_created',
-  'study_session_completed',
-  'review_session_completed',
-]
 
 const RequestBodySchema = z.object({
   eventType: z.enum([
@@ -61,7 +51,7 @@ export async function POST(req: NextRequest) {
     const { eventType } = parsed.data
 
     // 3. Rate limit check (generous — 30/hr)
-    const rateCheck = checkRateLimit(user.id, 'reaction')
+    const rateCheck = await checkRateLimit(user.id, 'reaction')
     if (!rateCheck.allowed) {
       return NextResponse.json(
         {

@@ -4,7 +4,7 @@ import { isAIEnabled, generateChatResponse } from '@/lib/ai/client'
 import { checkRateLimit } from '@/lib/ai/rate-limit'
 import { detectContextDomains, buildContextForDomains } from '@/lib/ai/context'
 import { buildChatSystemPrompt } from '@/lib/ai/prompts'
-import type { MochiChatMessage } from '@/lib/ai/types'
+import { MAX_REQUEST_BYTES, validateChatInput } from '@/lib/ai/chat-input'
 
 export const maxDuration = 60
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Rate limit check
-    const rateCheck = checkRateLimit(user.id, 'chat')
+    const rateCheck = await checkRateLimit(user.id, 'chat')
     if (!rateCheck.allowed) {
       return NextResponse.json(
         {
@@ -44,18 +44,33 @@ export async function POST(request: Request) {
       )
     }
 
-    // 4. Parse & validate request body
-    const body = await request.json().catch(() => ({}))
-    const userMessage = typeof body.message === 'string' ? body.message.trim() : ''
-    const history: MochiChatMessage[] = Array.isArray(body.history) ? body.history : []
-    const thinkingMode: string | undefined = typeof body.thinkingMode === 'string' ? body.thinkingMode : undefined
-
-    if (!userMessage) {
+    // 4. Bound request and validate all client-provided chat context.
+    const contentLength = Number(request.headers.get('content-length') || 0)
+    if (contentLength > MAX_REQUEST_BYTES) {
       return NextResponse.json(
-        { error: 'Vui lòng nhập nội dung câu hỏi.', code: 'INVALID_REQUEST' },
+        { error: 'Nội dung yêu cầu quá lớn.', code: 'INVALID_REQUEST' },
         { status: 400 }
       )
     }
+
+    const rawBody = await request.text()
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_REQUEST_BYTES) {
+      return NextResponse.json(
+        { error: 'Nội dung yêu cầu quá lớn.', code: 'INVALID_REQUEST' },
+        { status: 400 }
+      )
+    }
+    const body = (() => {
+      try { return JSON.parse(rawBody) as unknown } catch { return null }
+    })()
+    const parsedInput = validateChatInput(body)
+    if (!parsedInput.success) {
+      return NextResponse.json(
+        { error: parsedInput.error, code: 'INVALID_REQUEST' },
+        { status: 400 }
+      )
+    }
+    const { userMessage, history, thinkingMode } = parsedInput.data
 
     // Map thinkingMode: 'fast' -> 'low', 'deep' -> 'high', 'balanced' -> 'medium'
     let thinkingLevel: 'low' | 'medium' | 'high' | undefined = undefined

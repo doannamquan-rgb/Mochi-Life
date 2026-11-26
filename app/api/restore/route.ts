@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/supabase/auth-helper'
 import { validateBackupData } from '@/lib/backup'
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user, supabase } = await getAuthenticatedUser(req)
 
-    if (!user) {
+    if (!user || !supabase) {
       return NextResponse.json(
         { error: 'Bạn cần đăng nhập để thực hiện khôi phục dữ liệu nha! (◕‿◕✿)' },
         { status: 401 }

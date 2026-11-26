@@ -47,3 +47,5 @@ Approved verification commands run locally but may access the network as require
 Non-failing tooling warning: Vite warns that the existing `vitest.config.ts` uses ESM syntax while loaded as CommonJS and may need a module-format update when a future Vite version switches its default loader. Current Vitest execution passed; no package-wide module format was changed during setup.
 
 Remaining coverage limits: no React Native rendering/device test runner or live PostgreSQL/RLS integration harness is configured. Node unit tests do not validate production database migrations, external AI availability, native permissions or signed binaries. Add appropriate focused coverage when a future task touches those behaviors.
+
+AI rate limits use an in-memory adapter because this repository does not configure a shared counter service. The adapter interface is asynchronous and can be backed by a shared atomic store later; current limits are best-effort per server process and are not a distributed security boundary.

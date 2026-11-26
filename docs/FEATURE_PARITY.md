@@ -23,10 +23,12 @@
 | | Category Expense & Income Breakdown | `CROSS-PLATFORM` | **DONE** | **DONE** | `expense_categories` table |
 | | Monthly Budgets & Threshold Tracking | `CROSS-PLATFORM` | **DONE** | **DONE** | `budgets` table |
 | | Recurring Transactions Management | `CROSS-PLATFORM` | **DONE** | **DONE** | `recurring_transactions` table |
+| | Historical Wallet Balance Snapshots | `CROSS-PLATFORM` | **DONE** | **DONE** | `wallet_balance_snapshots` + Web/Mobile finance clients |
 | **Fitness** | Weight Goal & Current Weight Tracking | `CROSS-PLATFORM` | **DONE** | **DONE** | `weight_goals` & `weight_logs` |
 | | BMI & Health Category Calculation | `CROSS-PLATFORM` | **DONE** | **DONE** | `@mochi/shared` (`calculateBMI`, `getBMICategory`) |
 | | Exercise Logging (11 Sports) | `CROSS-PLATFORM` | **DONE** | **DONE** | `@mochi/shared` (`EXERCISE_TYPES`, `estimateCalories`) |
 | | Weekly Workout Minutes & Calorie Stats | `CROSS-PLATFORM` | **DONE** | **DONE** | `exercise_logs` table |
+| | Calorie Intake Logging & Daily Calories | `CROSS-PLATFORM` | **DONE** | **DONE** | `calorie_intake_entries` + Web/Mobile fitness clients |
 | **Chinese (HSK)** | HSK Courses & Level Hierarchy | `CROSS-PLATFORM` | **DONE** | **DONE** | `hsk_courses` & `hsk_lessons` |
 | | Flashcard SM-2 Spaced Repetition | `CROSS-PLATFORM` | **DONE** | **DONE** | `@mochi/shared` (`calculateNextReview`, `isDueForReview`) |
 | | Multiple Choice Vocabulary Quiz | `CROSS-PLATFORM` | **DONE** | **DONE** | `hsk_vocabulary` table |

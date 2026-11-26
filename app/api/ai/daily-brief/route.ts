@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       return NextResponse.json(fallbackBrief)
     }
 
-    const rateCheck = checkRateLimit(user.id, 'brief')
+    const rateCheck = await checkRateLimit(user.id, 'brief')
     if (!rateCheck.allowed) {
       return NextResponse.json(fallbackBrief)
     }

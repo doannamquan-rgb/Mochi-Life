@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { isPrivateIP, isSafeUrl } from '../../app/api/import/url/route'
+import { resolvePublicAddress } from '../import-url-security'
 
 describe('SSRF Protection - isPrivateIP', () => {
   it('detects IPv4 loopback (127.0.0.0/8)', () => {
@@ -26,6 +27,7 @@ describe('SSRF Protection - isPrivateIP', () => {
   it('detects AWS metadata & link-local (169.254.169.254)', () => {
     expect(isPrivateIP('169.254.169.254')).toBe(true)
     expect(isPrivateIP('169.254.1.1')).toBe(true)
+    expect(isPrivateIP('100.64.0.1')).toBe(true)
   })
 
   it('detects 0.0.0.0', () => {
@@ -34,6 +36,12 @@ describe('SSRF Protection - isPrivateIP', () => {
 
   it('detects IPv6 loopback (::1)', () => {
     expect(isPrivateIP('::1')).toBe(true)
+    expect(isPrivateIP('::')).toBe(true)
+    expect(isPrivateIP('fe80::1')).toBe(true)
+    expect(isPrivateIP('fd12::1')).toBe(true)
+    expect(isPrivateIP('ff02::1')).toBe(true)
+    expect(isPrivateIP('2001:db8::1')).toBe(true)
+    expect(isPrivateIP('2606:4700:4700::1111')).toBe(false)
   })
 
   it('detects IPv4-mapped IPv6 private addresses', () => {
@@ -75,8 +83,26 @@ describe('SSRF Protection - isSafeUrl', () => {
     expect((await isSafeUrl('http://internal.service.internal')).isSafe).toBe(false)
   })
 
-  it('allows safe public URLs', async () => {
-    const res = await isSafeUrl('https://raw.githubusercontent.com/example/repo/main/data.csv')
+  it('allows safe public URLs and returns the address to pin the connection to', async () => {
+    const res = await isSafeUrl(
+      'https://raw.githubusercontent.com/example/repo/main/data.csv',
+      async () => ({ address: '185.199.108.133', family: 4 })
+    )
     expect(res.isSafe).toBe(true)
+    expect(res.address?.address).toBe('185.199.108.133')
+  })
+
+  it('fails closed when DNS lookup fails', async () => {
+    const res = await isSafeUrl('https://unresolvable.example/data.csv', async () => {
+      throw new Error('DNS unavailable')
+    })
+    expect(res.isSafe).toBe(false)
+  })
+
+  it('rejects a hostname if any DNS answer is private', async () => {
+    await expect(resolvePublicAddress('mixed.example', async () => [
+      { address: '93.184.216.34', family: 4 },
+      { address: '10.0.0.8', family: 4 },
+    ])).rejects.toThrow(/private/)
   })
 })

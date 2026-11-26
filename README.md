@@ -86,7 +86,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 Lấy `NEXT_PUBLIC_SUPABASE_URL` và `NEXT_PUBLIC_SUPABASE_ANON_KEY` trong **Supabase Dashboard → Project Settings → API**.
 
 ### 4. Chạy các file Database Migration
-Trong **Supabase Dashboard → SQL Editor**, chạy lần lượt nội dung của 11 file migration theo thứ tự sau:
+Trong **Supabase Dashboard → SQL Editor**, chạy migration theo thứ tự số trong `supabase/migrations/`. Repo hiện có migrations `001` đến `017`.
+
+Migration `016_wallet_balance_snapshots.sql` có lỗi cú pháp ở policy/khối `DO`; không chạy file này trên database mới. Migration `017_wallet_snapshot_rls_repair.sql` tạo bảng nếu cần, áp dụng lại policy an toàn và đăng ký Realtime. Với database đã có bảng snapshots, vẫn chạy migration 017 để chuẩn hóa RLS.
 
 1. `supabase/migrations/001_create_tables.sql` — Cấu trúc bảng ban đầu
 2. `supabase/migrations/002_rls_policies.sql` — Thiết lập bảo mật Row Level Security (RLS)
@@ -99,6 +101,12 @@ Trong **Supabase Dashboard → SQL Editor**, chạy lần lượt nội dung c�
 9. `supabase/migrations/009_xp_idempotency_and_integrity.sql` — Ràng buộc chống trùng lặp XP & giới hạn mức điểm
 10. `supabase/migrations/010_recurring_anchor.sql` — Bổ sung trường ngày neo (`anchor_day`, `anchor_month`) cho giao dịch định kỳ
 11. `supabase/migrations/011_transactional_restore_rpc.sql` — Hàm RPC khôi phục toàn bộ dữ liệu an toàn theo transaction
+12. `supabase/migrations/012_comprehensive_achievements_rpc.sql` — Đánh giá và mở khóa thành tích toàn diện
+13. `supabase/migrations/013_enable_selective_realtime.sql` — Cấu hình publication Realtime
+14. `supabase/migrations/014_realtime_and_atomic_finance_rpc.sql` — RPC tài chính nguyên tử và đồng bộ realtime
+15. `supabase/migrations/015_calorie_intake_entries.sql` — Nhật ký calo nạp vào
+16. `supabase/migrations/016_wallet_balance_snapshots.sql` — Migration lịch sử có lỗi cú pháp; xem lưu ý và dùng migration 017
+17. `supabase/migrations/017_wallet_snapshot_rls_repair.sql` — Tạo/sửa bảng snapshots, RLS và Realtime
 
 ### 5. Cấu hình Supabase Authentication
 1. Truy cập **Supabase Dashboard → Authentication → Providers**.
