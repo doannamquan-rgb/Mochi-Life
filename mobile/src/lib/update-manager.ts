@@ -42,13 +42,13 @@ const initialIsEmergency = Boolean(Updates.isEmergencyLaunch)
 const initialEmergencyReason = Updates.emergencyLaunchReason || null
 const initialIsEmbedded = Boolean(Updates.isEmbeddedLaunch)
 const initialRunningUpdateId = Updates.updateId || null
-const initialRuntimeVersion =
-  typeof Updates.runtimeVersion === 'string'
-    ? Updates.runtimeVersion
-    : Constants.expoConfig?.runtimeVersion
-      ? String(Constants.expoConfig.runtimeVersion)
-      : '6.1.0'
 const initialAppVersion = Constants.expoConfig?.version || '6.3.0'
+const initialRuntimeVersion =
+  typeof Updates.runtimeVersion === 'string' && Updates.runtimeVersion.length > 0
+    ? Updates.runtimeVersion
+    : typeof Constants.expoConfig?.runtimeVersion === 'string'
+      ? Constants.expoConfig.runtimeVersion
+      : initialAppVersion
 const initialChannel = Updates.channel || 'development'
 
 if (Updates.isEnabled) {
