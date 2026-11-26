@@ -14,9 +14,9 @@ export const metadata: Metadata = {
     default: 'Mochi Life 🐱',
     template: '%s | Mochi Life',
   },
-  description: 'Ứng dụng quản lý mục tiêu cá nhân - Giảm cân, Học tiếng Trung & Kiểm soát Chi tiêu',
+  description: 'Ứng dụng quản lý mục tiêu cá nhân - Sức khỏe & vận động, Học tiếng Trung & Kiểm soát Chi tiêu',
   manifest: '/manifest.json',
-  keywords: ['mục tiêu', 'giảm cân', 'tiếng Trung', 'chi tiêu', 'HSK', 'kawaii'],
+  keywords: ['mục tiêu', 'sức khỏe', 'vận động', 'tiếng Trung', 'chi tiêu', 'HSK', 'kawaii'],
   authors: [{ name: 'Mochi Life' }],
   openGraph: {
     title: 'Mochi Life 🐱',

@@ -26,6 +26,9 @@ import {
   StatCard,
   KeyboardSafeModal,
   MochiButton,
+  MochiSkeleton,
+  MochiErrorState,
+  MochiErrorBanner,
 } from '../../src/components/ui'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 
@@ -40,19 +43,28 @@ export default function ChineseScreen() {
     masteredCount,
     dueCount,
     loading,
+    hasData,
+    error,
     switchCourse,
     refetch,
   } = useChinese()
 
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [switching, setSwitching] = useState(false)
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await refetch()
-    setRefreshing(false)
+    setRefreshError(null)
+    try {
+      await refetch()
+    } catch {
+      setRefreshError('Không thể làm mới dữ liệu tiếng Trung. Vui lòng kiểm tra mạng.')
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const handleSelectCourse = async (courseId: string) => {
@@ -91,7 +103,7 @@ export default function ChineseScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
-            refreshing={refreshing || loading}
+            refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[colors.cheese]}
           />
@@ -108,6 +120,8 @@ export default function ChineseScreen() {
             style={styles.courseSwitchBtn}
             onPress={() => setIsCourseModalOpen(true)}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Chọn khóa học tiếng Trung"
           >
             <BookOpen size={16} color={colors.chocolate} />
             <Text style={styles.courseSwitchText}>
@@ -117,7 +131,48 @@ export default function ChineseScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Active Course Card */}
+        {loading && !hasData ? (
+          <View style={{ gap: spacing.md }}>
+            <MochiCard style={{ padding: spacing.lg, gap: 12 }}>
+              <MochiSkeleton width={160} height={22} />
+              <MochiSkeleton width="70%" height={16} />
+              <MochiSkeleton width="100%" height={10} borderRadius={radius.full} />
+            </MochiCard>
+            <View style={styles.modesRow}>
+              <MochiCard style={{ flex: 1, padding: spacing.lg, gap: 8 }}>
+                <MochiSkeleton width={32} height={32} />
+                <MochiSkeleton width="80%" height={18} />
+                <MochiSkeleton width="60%" height={14} />
+              </MochiCard>
+              <MochiCard style={{ flex: 1, padding: spacing.lg, gap: 8 }}>
+                <MochiSkeleton width={32} height={32} />
+                <MochiSkeleton width="80%" height={18} />
+                <MochiSkeleton width="60%" height={14} />
+              </MochiCard>
+            </View>
+            <MochiCard style={{ padding: spacing.md, gap: 10 }}>
+              <MochiSkeleton width="100%" height={48} />
+              <MochiSkeleton width="100%" height={48} />
+              <MochiSkeleton width="100%" height={48} />
+            </MochiCard>
+          </View>
+        ) : error && !hasData ? (
+          <MochiErrorState
+            message={error}
+            onRetry={onRefresh}
+            retrying={refreshing}
+          />
+        ) : (
+          <>
+            {(refreshError || error) && (
+              <MochiErrorBanner
+                message={refreshError || error!}
+                onRetry={onRefresh}
+                retrying={refreshing}
+              />
+            )}
+
+            {/* Active Course Card */}
         <MochiCard style={styles.courseCard} accentColor={colors.lavender}>
           <View style={styles.courseHeader}>
             <View style={styles.badgeWrapper}>
@@ -272,6 +327,8 @@ export default function ChineseScreen() {
             </View>
           )}
         </MochiCard>
+          </>
+        )}
       </ScrollView>
 
       {/* Course Switcher Bottom Sheet Modal */}

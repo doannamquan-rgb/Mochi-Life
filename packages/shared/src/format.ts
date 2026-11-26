@@ -207,8 +207,11 @@ export const FREQUENCY_LABELS = {
 }
 
 // Module Category Labels (Strict Vietnamese translation)
+export const HEALTH_NAV_LABEL = 'Sức khỏe'
+export const HEALTH_PAGE_TITLE = 'Sức khỏe & vận động'
+
 export const MODULE_CATEGORY_LABELS = {
-  fitness: { label: 'Sức khỏe', color: '#FF7A5C', emoji: '💪' },
+  fitness: { label: HEALTH_NAV_LABEL, fullLabel: HEALTH_PAGE_TITLE, color: '#FF7A5C', emoji: '💪' },
   study: { label: 'Học tập', color: '#8F71F5', emoji: '📚' },
   expense: { label: 'Tài chính', color: '#3BB88E', emoji: '💰' },
   general: { label: 'Tổng hợp', color: '#FFCA1A', emoji: '🌟' },

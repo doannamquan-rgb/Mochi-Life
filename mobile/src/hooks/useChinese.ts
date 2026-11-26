@@ -235,6 +235,14 @@ export function useChinese() {
   const learnedVocab = vocabulary.filter(v => v.memory_level !== 'not_learned')
   const masteredVocab = vocabulary.filter(v => v.memory_level === 'mastered')
 
+  const hasCoreData =
+    coursesQuery.data !== undefined &&
+    profileQuery.data !== undefined &&
+    (!activeCourseId || vocabularyQuery.data !== undefined)
+
+  const hasError =
+    coursesQuery.isError || profileQuery.isError || (!!activeCourseId && vocabularyQuery.isError)
+
   return {
     courses,
     activeCourse,
@@ -246,16 +254,20 @@ export function useChinese() {
     learnedCount: learnedVocab.length,
     masteredCount: masteredVocab.length,
     dueCount: dueVocab.length,
-    loading: coursesQuery.isLoading || vocabularyQuery.isLoading || profileQuery.isLoading,
+    loading: !hasCoreData && (coursesQuery.isLoading || vocabularyQuery.isLoading || profileQuery.isLoading),
+    hasData: hasCoreData,
+    error: hasError ? 'Không thể tải dữ liệu tiếng Trung. Vui lòng kiểm tra kết nối mạng.' : null,
     switchCourse: switchCourseMutation.mutateAsync,
     submitReview: reviewVocabMutation.mutateAsync,
     refetch: async () => {
-      await Promise.all([
+      const results = await Promise.all([
         coursesQuery.refetch(),
         profileQuery.refetch(),
         lessonsQuery.refetch(),
         vocabularyQuery.refetch(),
       ])
+      const firstErr = results.find(r => r.isError)?.error
+      if (firstErr) throw firstErr
     },
   }
 }

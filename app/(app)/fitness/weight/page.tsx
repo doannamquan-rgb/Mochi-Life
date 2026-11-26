@@ -229,6 +229,12 @@ function WeightPageContent() {
   const [goal, setGoal] = useState<WeightGoal | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(searchParams.get('action') === 'add')
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setShowForm(true)
+    }
+  }, [searchParams])
   const [editingLog, setEditingLog] = useState<WeightLog | undefined>()
   const [period, setPeriod] = useState<'7d' | '30d' | '3m' | '6m' | '1y' | 'all'>('30d')
 

@@ -221,6 +221,12 @@ function ExpensePageContent() {
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(searchParams.get('action') === 'add')
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setShowForm(true)
+    }
+  }, [searchParams])
   const [editingTx, setEditingTx] = useState<Transaction | undefined>()
   const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all')
   const [filterCat, setFilterCat] = useState('')

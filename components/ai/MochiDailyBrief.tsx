@@ -182,12 +182,12 @@ export function MochiDailyBrief({ userId }: { userId: string }) {
 
       <style jsx>{`
         .brief-card {
-          background: linear-gradient(135deg, #FFF9F0 0%, #FFFFFF 100%);
-          border-radius: 24px;
-          padding: 22px;
+          background: var(--color-surface);
+          border-radius: 22px;
+          padding: 20px;
           margin-bottom: 24px;
-          border: 2px solid var(--cheese-200);
-          box-shadow: var(--shadow-sm);
+          border: 1.5px solid var(--chocolate-100);
+          box-shadow: var(--shadow-xs);
         }
 
         .loading-card {

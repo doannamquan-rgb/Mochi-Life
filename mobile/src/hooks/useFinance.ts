@@ -336,6 +336,18 @@ export function useFinance() {
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + (t.amount || 0), 0)
 
+  const todayTransactionCount = transactions.filter(t => t.transaction_date === today).length
+  const totalBudget = (budgetsQuery.data || []).find(b => b.is_total_budget)
+  const monthBudgetAmount = totalBudget?.amount ?? null
+
+  const hasCoreData =
+    walletsQuery.data !== undefined &&
+    transactionsQuery.data !== undefined &&
+    monthlyAggregatesQuery.data !== undefined
+
+  const hasError =
+    walletsQuery.isError || transactionsQuery.isError || monthlyAggregatesQuery.isError
+
   return {
     wallets: computedWallets,
     categories: categoriesQuery.data || [],
@@ -345,13 +357,17 @@ export function useFinance() {
     totalBalance,
     monthExpense,
     monthIncome,
-    loading: walletsQuery.isLoading || transactionsQuery.isLoading || snapshotsQuery.isLoading,
+    todayTransactionCount,
+    monthBudgetAmount,
+    loading: !hasCoreData && (walletsQuery.isLoading || transactionsQuery.isLoading || snapshotsQuery.isLoading),
+    hasData: hasCoreData,
+    error: hasError ? 'Không thể tải dữ liệu tài chính. Vui lòng kiểm tra kết nối mạng.' : null,
     addTransaction: addTransactionMutation.mutateAsync,
     deleteTransaction: deleteTransactionMutation.mutateAsync,
     adjustWalletBalance: adjustWalletBalanceMutation.mutateAsync,
     addWallet: addWalletMutation.mutateAsync,
     refetch: async () => {
-      await Promise.all([
+      const results = await Promise.all([
         walletsQuery.refetch(),
         snapshotsQuery.refetch(),
         categoriesQuery.refetch(),
@@ -359,6 +375,8 @@ export function useFinance() {
         monthlyAggregatesQuery.refetch(),
         budgetsQuery.refetch(),
       ])
+      const firstErr = results.find(r => r.isError)?.error
+      if (firstErr) throw firstErr
     },
   }
 }

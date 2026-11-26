@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { DEFAULT_EXPENSE_CATEGORIES } from '@/lib/format'
 
 const steps = [
-  { id: 1, title: 'Giảm cân & Luyện tập', emoji: '💪' },
+  { id: 1, title: 'Sức khỏe & vận động', emoji: '💪' },
   { id: 2, title: 'Học tiếng Trung', emoji: '🈶' },
   { id: 3, title: 'Kiểm soát Chi tiêu', emoji: '💰' },
 ]
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
             <div className="step-form">
               <div className="step-title">
                 <span>💪</span>
-                <h2>Mục tiêu giảm cân</h2>
+                <h2>Mục tiêu sức khỏe & cân nặng</h2>
               </div>
 
               <div className="form-row">

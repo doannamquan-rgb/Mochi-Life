@@ -321,6 +321,17 @@ export function useFitness() {
   const weeklyIntakeCalories = weeklyIntakeList.reduce((sum, c) => sum + (c.calories || 0), 0)
   const weeklyCalorieBalance = weeklyIntakeCalories - weeklyCalories
 
+  const latestWeightDate = weightLogsQuery.data?.[0]?.log_date ?? null
+  const todayExerciseMinutes = (exerciseLogsQuery.data || [])
+    .filter(l => l.log_date === today)
+    .reduce((sum, l) => sum + (l.duration_minutes || 0), 0)
+
+  const hasCoreData =
+    weightLogsQuery.data !== undefined && exerciseLogsQuery.data !== undefined
+
+  const hasError =
+    weightLogsQuery.isError || exerciseLogsQuery.isError || weightGoalQuery.isError
+
   return {
     weightGoal: weightGoalQuery.data,
     weightLogs: weightLogsQuery.data || [],
@@ -329,20 +340,25 @@ export function useFitness() {
     fitnessGoal: fitnessGoalQuery.data,
     profile: profileQuery.data,
     latestWeight,
+    latestWeightDate,
     heightCm,
     currentBMI,
+    todayExerciseMinutes,
     weeklyMinutes,
     weeklyCalories,
     weeklySessions: weeklyExerciseLogs.length,
+    weeklySessionTarget: fitnessGoalQuery.data?.weekly_sessions ?? null,
     todayIntakeCalories,
     weeklyIntakeCalories,
     weeklyCalorieBalance,
-    loading: weightLogsQuery.isLoading || exerciseLogsQuery.isLoading || calorieIntakeQuery.isLoading,
+    loading: !hasCoreData && (weightLogsQuery.isLoading || exerciseLogsQuery.isLoading || calorieIntakeQuery.isLoading),
+    hasData: hasCoreData,
+    error: hasError ? 'Không thể tải dữ liệu sức khỏe. Vui lòng kiểm tra kết nối mạng.' : null,
     addWeightLog: addWeightLogMutation.mutateAsync,
     addExerciseLog: addExerciseLogMutation.mutateAsync,
     addCalorieIntake: addCalorieIntakeMutation.mutateAsync,
     refetch: async () => {
-      await Promise.all([
+      const results = await Promise.all([
         weightGoalQuery.refetch(),
         weightLogsQuery.refetch(),
         exerciseLogsQuery.refetch(),
@@ -350,6 +366,8 @@ export function useFitness() {
         fitnessGoalQuery.refetch(),
         profileQuery.refetch(),
       ])
+      const firstErr = results.find(r => r.isError)?.error
+      if (firstErr) throw firstErr
     },
   }
 }

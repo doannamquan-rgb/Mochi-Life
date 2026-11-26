@@ -223,7 +223,7 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
                 🐱 Mochi AI Coach
               </Command.Item>
               <Command.Item onSelect={() => handleSelect('/fitness')} className="command-item">
-                💪 Giảm cân & Luyện tập
+                💪 Sức khỏe & vận động
               </Command.Item>
               <Command.Item onSelect={() => handleSelect('/chinese')} className="command-item">
                 🈶 Học tiếng Trung

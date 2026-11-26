@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -8,11 +8,13 @@ import { useUser } from '@/hooks/use-user'
 import { toast } from 'sonner'
 import { SearchPalette } from '@/components/search-palette'
 import { AppleHomeButton } from '@/components/apple-home-button'
+import { QuickAddMenu } from '@/components/quick-add-menu'
+import { HEALTH_NAV_LABEL, HEALTH_PAGE_TITLE } from '@/lib/format'
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', emoji: '🏠' },
   { href: '/ai', label: 'Mochi AI', emoji: '🐱' },
-  { href: '/fitness', label: 'Giảm cân', emoji: '💪' },
+  { href: '/fitness', label: HEALTH_PAGE_TITLE, emoji: '💪' },
   { href: '/chinese', label: 'Tiếng Trung', emoji: '🈶' },
   { href: '/expenses', label: 'Chi tiêu', emoji: '💰' },
   { href: '/reports', label: 'Báo cáo', emoji: '📊' },
@@ -23,105 +25,18 @@ const bottomNavItems = [
   { href: '/dashboard', label: 'Tổng quan', emoji: '🏠' },
   { href: '/ai', label: 'Mochi AI', emoji: '🐱' },
   { href: '/chinese', label: 'Học', emoji: '🈶' },
-  { href: '/fitness', label: 'Giảm cân', emoji: '💪' },
+  { href: '/fitness', label: HEALTH_NAV_LABEL, emoji: '💪' },
   { href: '/expenses', label: 'Chi tiêu', emoji: '💰' },
-]
-
-const fabActions = [
-  { label: 'Hỏi Mochi AI', emoji: '🐱', href: '/ai' },
-  { label: 'Ghi cân nặng', emoji: '⚖️', href: '/fitness/weight?action=add' },
-  { label: 'Thêm buổi tập', emoji: '🏃', href: '/fitness/exercise?action=add' },
-  { label: 'Ghi buổi học', emoji: '📖', href: '/chinese/journal?action=add' },
-  { label: 'Thêm từ vựng', emoji: '🈶', href: '/chinese/vocabulary?action=add' },
-  { label: 'Thêm giao dịch', emoji: '💸', href: '/expenses?action=add' },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, profile, loading } = useUser()
-  const [fabOpen, setFabOpen] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpenPath, setSidebarOpenPath] = useState<string | null>(null)
+  const sidebarOpen = sidebarOpenPath === pathname
+  const setSidebarOpen = (nextOpen: boolean) => setSidebarOpenPath(nextOpen ? pathname : null)
   const [searchOpen, setSearchOpen] = useState(false)
-
-  // AssistiveTouch-style Draggable FAB State
-  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const fabRef = useRef<HTMLButtonElement>(null)
-
-  // Load saved position from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('mochi_fab_pos')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-          const clampedX = Math.max(12, Math.min(window.innerWidth - 68, parsed.x))
-          const clampedY = Math.max(12, Math.min(window.innerHeight - 68, parsed.y))
-          setFabPos({ x: clampedX, y: clampedY })
-        }
-      }
-    } catch (e) {
-      console.error('Could not load FAB position', e)
-    }
-  }, [])
-
-  function handlePointerDown(e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) {
-    if (!fabRef.current) return
-    const rect = fabRef.current.getBoundingClientRect()
-    const startX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const startY = 'touches' in e ? e.touches[0].clientY : e.clientY
-    const initialLeft = rect.left
-    const initialTop = rect.top
-    let hasMoved = false
-
-    function onMove(evt: MouseEvent | TouchEvent) {
-      const currentX = 'touches' in evt ? evt.touches[0].clientX : evt.clientX
-      const currentY = 'touches' in evt ? evt.touches[0].clientY : evt.clientY
-      const dx = currentX - startX
-      const dy = currentY - startY
-
-      if (Math.hypot(dx, dy) > 6) {
-        hasMoved = true
-        setIsDragging(true)
-      }
-
-      if (hasMoved) {
-        const newX = Math.max(12, Math.min(window.innerWidth - 68, initialLeft + dx))
-        const newY = Math.max(12, Math.min(window.innerHeight - 68, initialTop + dy))
-        setFabPos({ x: newX, y: newY })
-      }
-    }
-
-    function onUp() {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-      window.removeEventListener('touchmove', onMove)
-      window.removeEventListener('touchend', onUp)
-
-      if (hasMoved) {
-        setTimeout(() => setIsDragging(false), 50)
-        setFabPos(prev => {
-          if (!prev) return null
-          // Snap to nearest screen edge (left or right side like iPhone AssistiveTouch)
-          const snapLeft = prev.x < window.innerWidth / 2 ? 16 : window.innerWidth - 68
-          const snapped = { x: snapLeft, y: prev.y }
-          try {
-            localStorage.setItem('mochi_fab_pos', JSON.stringify(snapped))
-          } catch (err) {}
-          return snapped
-        })
-      } else {
-        setIsDragging(false)
-        setFabOpen(prev => !prev)
-      }
-    }
-
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-    window.addEventListener('touchmove', onMove, { passive: false })
-    window.addEventListener('touchend', onUp)
-  }
 
   // Service Worker registration & Theme Sync
   useEffect(() => {
@@ -147,11 +62,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [profile])
 
-  // Close FAB on route change
+  // Close mobile sidebar drawer with Escape
   useEffect(() => {
-    setFabOpen(false)
-    setSidebarOpen(false)
-  }, [pathname])
+    if (!sidebarOpen) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSidebarOpenPath(null)
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [sidebarOpen])
 
   async function handleLogout() {
     const supabase = createClient()
@@ -189,11 +110,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div
           className="sidebar-overlay"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
-      <aside className={`mochi-sidebar ${sidebarOpen ? 'open' : ''}`}>
+      <aside className={`mochi-sidebar ${sidebarOpen ? 'open' : ''}`} aria-label="Điều hướng chính">
         {/* Logo */}
         <div className="sidebar-logo">
           <span className="logo-emoji">🐱</span>
@@ -221,7 +143,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Nav items */}
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="Menu chức năng">
+          <QuickAddMenu variant="sidebar" onNavigate={() => setSidebarOpen(false)} />
           <button
             type="button"
             className="mochi-sidebar-item search-trigger-btn"
@@ -238,6 +161,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className={`mochi-sidebar-item ${
                 pathname.startsWith(item.href) ? 'active' : ''
               }`}
+              aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
             >
               <span className="sidebar-item-emoji">{item.emoji}</span>
               <span>{item.label}</span>
@@ -247,15 +171,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Bottom items */}
         <div className="sidebar-bottom">
-          <Link href="/achievements" className={`mochi-sidebar-item ${pathname.startsWith('/achievements') ? 'active' : ''}`}>
+          <Link
+            href="/achievements"
+            className={`mochi-sidebar-item ${pathname.startsWith('/achievements') ? 'active' : ''}`}
+            aria-current={pathname.startsWith('/achievements') ? 'page' : undefined}
+          >
             <span className="sidebar-item-emoji">🏆</span>
             <span>Thành tích</span>
           </Link>
-          <Link href="/calendar" className={`mochi-sidebar-item ${pathname.startsWith('/calendar') ? 'active' : ''}`}>
+          <Link
+            href="/calendar"
+            className={`mochi-sidebar-item ${pathname.startsWith('/calendar') ? 'active' : ''}`}
+            aria-current={pathname.startsWith('/calendar') ? 'page' : undefined}
+          >
             <span className="sidebar-item-emoji">📅</span>
             <span>Lịch</span>
           </Link>
-          <button className="mochi-sidebar-item logout-btn" onClick={handleLogout}>
+          <button type="button" className="mochi-sidebar-item logout-btn" onClick={handleLogout}>
             <span className="sidebar-item-emoji">👋</span>
             <span>Đăng xuất</span>
           </button>
@@ -264,25 +196,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="app-main">
-        {/* Mobile header */}
+        {/* Mobile sticky header */}
         <header className="mobile-header">
-          <button
-            className="hamburger-btn"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Mở menu"
-          >
-            ☰
-          </button>
-          <Link href="/dashboard" className="mobile-logo">
-            🐱 Mochi Life
-          </Link>
-          <button
-            className="settings-btn"
-            onClick={() => setSearchOpen(true)}
-            aria-label="Tìm kiếm"
-          >
-            🔍
-          </button>
+          <div className="mobile-header-left">
+            <button
+              type="button"
+              className="hamburger-btn"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label={sidebarOpen ? 'Đóng menu' : 'Mở menu'}
+              aria-expanded={sidebarOpen}
+            >
+              ☰
+            </button>
+            <Link href="/dashboard" className="mobile-logo">
+              🐱 Mochi Life
+            </Link>
+          </div>
+          <div className="mobile-header-actions">
+            <button
+              type="button"
+              className="settings-btn"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Tìm kiếm"
+            >
+              🔍
+            </button>
+            <QuickAddMenu variant="header" />
+          </div>
         </header>
 
         {children}
@@ -291,75 +231,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
       <AppleHomeButton onOpenSearch={() => setSearchOpen(true)} />
 
-      {/* FAB */}
-      {fabOpen && (
-        <div className="fab-backdrop" onClick={() => setFabOpen(false)} />
-      )}
-
-      {/* FAB Menu */}
-      {fabOpen && (
-        <div
-          className="fab-menu"
-          style={fabPos ? {
-            position: 'fixed',
-            top: `${Math.max(16, Math.min((typeof window !== 'undefined' ? window.innerHeight : 600) - 270, fabPos.y - 250))}px`,
-            left: (typeof window !== 'undefined' && fabPos.x > window.innerWidth / 2)
-              ? `${Math.max(16, fabPos.x - 175)}px`
-              : `${Math.min((typeof window !== 'undefined' ? window.innerWidth : 400) - 180, fabPos.x + 10)}px`,
-            bottom: 'auto',
-            right: 'auto',
-            zIndex: 95,
-          } : { zIndex: 95 }}
-        >
-          {fabActions.map((action, i) => (
-            <Link
-              key={action.href}
-              href={action.href}
-              className="fab-menu-item animate-slide-up"
-              style={{ animationDelay: `${i * 50}ms` }}
-              onClick={() => setFabOpen(false)}
-            >
-              <span className="fab-menu-emoji">{action.emoji}</span>
-              <span>{action.label}</span>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      <button
-        ref={fabRef}
-        className={`mochi-fab ${fabOpen ? 'fab-open' : ''} ${isDragging ? 'is-dragging' : ''}`}
-        onMouseDown={handlePointerDown}
-        onTouchStart={handlePointerDown}
-        aria-label="Thêm nhanh"
-        id="fab-button"
-        style={fabPos ? {
-          position: 'fixed',
-          left: `${fabPos.x}px`,
-          top: `${fabPos.y}px`,
-          bottom: 'auto',
-          right: 'auto',
-          zIndex: 90,
-          touchAction: 'none',
-          cursor: isDragging ? 'grabbing' : 'grab',
-          transition: isDragging ? 'none' : 'left 0.3s cubic-bezier(0.2,0.8,0.2,1), top 0.3s cubic-bezier(0.2,0.8,0.2,1), background 0.15s, transform 0.15s',
-        } : {
-          touchAction: 'none',
-          cursor: 'grab',
-        }}
-      >
-        {fabOpen ? '✕' : '+'}
-      </button>
-
       {/* Bottom navigation (mobile) */}
-      <nav className="mochi-bottom-nav">
+      <nav className="mochi-bottom-nav" aria-label="Điều hướng dưới màn hình">
         {bottomNavItems.map(item => (
           <Link
             key={item.href}
             href={item.href}
             className={`mochi-bottom-nav-item ${pathname.startsWith(item.href) ? 'active' : ''}`}
+            aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
           >
-            <span style={{ fontSize: '1.3rem' }}>{item.emoji}</span>
+            <span style={{ fontSize: '1.25rem' }} aria-hidden="true">{item.emoji}</span>
             <span>{item.label}</span>
           </Link>
         ))}
@@ -504,8 +385,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           display: none;
           align-items: center;
           justify-content: space-between;
-          padding: 12px 0 16px;
-          margin-bottom: 8px;
+          gap: 8px;
+          position: sticky;
+          top: 0;
+          z-index: 40;
+          background: var(--cream);
+          border-bottom: 1px solid var(--chocolate-100);
+          padding: 10px 16px;
+          margin: -12px -16px 14px;
+        }
+
+        .mobile-header-left {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .mobile-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
         }
 
         .hamburger-btn {
@@ -514,71 +415,47 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           font-size: 1.3rem;
           cursor: pointer;
           color: var(--chocolate-600);
-          padding: 4px 8px;
+          min-width: 40px;
+          min-height: 40px;
+          border-radius: 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .mobile-logo {
           font-weight: 800;
-          font-size: 1.1rem;
+          font-size: 1.05rem;
           color: var(--chocolate-600);
           text-decoration: none;
+          white-space: nowrap;
         }
 
         .settings-btn {
-          background: none;
-          border: none;
-          font-size: 1.2rem;
+          background: var(--color-surface);
+          border: 1.5px solid var(--chocolate-100);
+          font-size: 1.05rem;
           cursor: pointer;
           color: var(--chocolate-500);
-          padding: 4px 8px;
-          text-decoration: none;
-        }
-
-        .fab-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 38;
-        }
-
-        .fab-menu {
-          position: fixed;
-          bottom: 148px;
-          right: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          z-index: 41;
-        }
-
-        .fab-menu-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: white;
-          padding: 10px 16px;
+          min-width: 40px;
+          min-height: 40px;
           border-radius: 999px;
-          box-shadow: 0 4px 16px rgba(61, 43, 31, 0.15);
-          color: var(--chocolate-600);
-          font-weight: 700;
-          font-size: 0.875rem;
-          text-decoration: none;
-          white-space: nowrap;
-          transition: all 0.15s;
-          border: 1.5px solid var(--chocolate-100);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .fab-menu-item:hover {
-          background: var(--cheese-50);
-          transform: translateX(-4px);
+        .hamburger-btn:focus-visible,
+        .settings-btn:focus-visible,
+        .mobile-logo:focus-visible {
+          outline: 2.5px solid var(--chocolate-600);
+          outline-offset: 2px;
         }
 
-        .fab-menu-emoji {
-          font-size: 1.1rem;
-        }
-
-        .fab-open {
-          background: var(--peach-400) !important;
-          transform: rotate(45deg);
+        @media (min-width: 768px) {
+          .mochi-bottom-nav {
+            display: none;
+          }
         }
 
         @media (max-width: 767px) {
@@ -594,20 +471,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           .app-main {
             margin-left: 0;
             padding: 12px 16px;
-            padding-bottom: 80px;
+            padding-bottom: 88px;
             max-width: 100vw;
           }
 
           .mobile-header {
             display: flex;
-          }
-
-          .fab-menu {
-            bottom: 164px;
-          }
-
-          .mochi-fab {
-            bottom: 96px;
           }
         }
       `}</style>

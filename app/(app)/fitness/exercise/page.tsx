@@ -400,6 +400,12 @@ function ExercisePageContent() {
   const [fitnessGoal, setFitnessGoal] = useState<FitnessGoal | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(searchParams.get('action') === 'add')
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setShowForm(true)
+    }
+  }, [searchParams])
   const [editingLog, setEditingLog] = useState<ExerciseLog | undefined>()
   const [period, setPeriod] = useState<'7d' | '30d' | '3m'>('30d')
 

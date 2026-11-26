@@ -16,6 +16,7 @@ import {
   Shield,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   RefreshCw,
   Edit3,
 } from 'lucide-react-native'
@@ -141,6 +142,16 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backToMoreBtn}
+            onPress={() => router.navigate('/(tabs)/more')}
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại menu Thêm"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ChevronLeft size={18} color={colors.chocolate} />
+            <Text style={styles.backToMoreText}>Thêm</Text>
+          </TouchableOpacity>
           <Text style={styles.title}>Cài đặt & Tài khoản ⚙️</Text>
         </View>
 
@@ -370,6 +381,25 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: spacing.md,
+    gap: 8,
+  },
+  backToMoreBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 36,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.chocolateBorder,
+  },
+  backToMoreText: {
+    ...typography.caption,
+    fontWeight: '800',
+    color: colors.chocolate,
   },
   title: {
     ...typography.titleLarge,

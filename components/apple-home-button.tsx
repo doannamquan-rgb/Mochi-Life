@@ -295,6 +295,12 @@ export function AppleHomeButton({ onOpenSearch }: { onOpenSearch?: () => void })
           border-radius: 12px;
         }
 
+        @media (max-width: 767px) {
+          .apple-home-tab-container {
+            display: none;
+          }
+        }
+
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

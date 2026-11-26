@@ -58,19 +58,26 @@ export function useDashboardData() {
     },
   })
 
-  // 4. Fetch Study Streak
+  // 4. Fetch Study Streak & Today Study Minutes
   const streakQuery = useQuery({
     queryKey: queryKeys.streak(userId),
     enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('study_sessions')
-        .select('session_date')
+        .select('session_date, duration_minutes')
         .eq('user_id', userId!)
         .order('session_date', { ascending: false })
       if (error) throw error
-      const dates = (data || []).map((s: any) => s.session_date)
-      return calculateStreak(dates)
+      const rows = (data || []) as Array<{ session_date: string; duration_minutes?: number }>
+      const dates = rows.map(s => s.session_date)
+      const todayMinutes = rows
+        .filter(s => s.session_date === today)
+        .reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
+      return {
+        streak: calculateStreak(dates),
+        todayStudyMinutes: todayMinutes,
+      }
     },
   })
 
@@ -141,22 +148,35 @@ export function useDashboardData() {
     },
   })
 
+  const hasCoreData =
+    profileQuery.data !== undefined &&
+    xpQuery.data !== undefined &&
+    checklistQuery.data !== undefined
+
+  const hasError =
+    profileQuery.isError || xpQuery.isError || checklistQuery.isError || streakQuery.isError
+
   return {
     profile: profileQuery.data,
     levelData: xpQuery.data,
     checklist: checklistQuery.data || [],
-    streak: streakQuery.data || 0,
-    loading: profileQuery.isLoading || xpQuery.isLoading || checklistQuery.isLoading,
+    streak: streakQuery.data?.streak || 0,
+    todayStudyMinutes: streakQuery.data?.todayStudyMinutes || 0,
+    loading: !hasCoreData && (profileQuery.isLoading || xpQuery.isLoading || checklistQuery.isLoading),
+    hasData: hasCoreData,
+    error: hasError ? 'Không thể tải dữ liệu tổng quan. Vui lòng kiểm tra kết nối mạng.' : null,
     toggleChecklist: toggleChecklistMutation.mutateAsync,
     addChecklistItem: addChecklistMutation.mutateAsync,
     deleteChecklistItem: deleteChecklistMutation.mutateAsync,
     refetch: async () => {
-      await Promise.all([
+      const results = await Promise.all([
         profileQuery.refetch(),
         xpQuery.refetch(),
         checklistQuery.refetch(),
         streakQuery.refetch(),
       ])
+      const firstErr = results.find(r => r.isError)?.error
+      if (firstErr) throw firstErr
     },
   }
 }

@@ -141,7 +141,7 @@ export default function ReportsPage() {
               className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'overview' ? '🏠 Tổng quan' : tab === 'fitness' ? '💪 Thể lực' : tab === 'study' ? '📚 Học tập' : '💰 Chi tiêu'}
+              {tab === 'overview' ? '🏠 Tổng quan' : tab === 'fitness' ? '💪 Sức khỏe' : tab === 'study' ? '📚 Học tập' : '💰 Chi tiêu'}
             </button>
           ))}
         </div>
@@ -159,7 +159,7 @@ export default function ReportsPage() {
         <div className="overview-section">
           <div className="overview-grid">
             <div className="overview-card fitness">
-              <h3>💪 Thể lực</h3>
+              <h3>💪 Sức khỏe & vận động</h3>
               <div className="ov-stats">
                 <div className="ov-stat"><div className="ov-val">{totalExerciseDays}</div><div className="ov-label">ngày tập</div></div>
                 <div className="ov-stat"><div className="ov-val">{totalExerciseMinutes}</div><div className="ov-label">phút</div></div>

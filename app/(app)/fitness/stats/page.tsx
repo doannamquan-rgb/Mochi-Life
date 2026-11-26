@@ -100,9 +100,9 @@ function FitnessStatsContent() {
       <div className="page-header">
         <div>
           <div className="breadcrumb">
-            <Link href="/fitness" className="back-link">← Thể chất & Sức khỏe</Link>
+            <Link href="/fitness" className="back-link">← Sức khỏe & vận động</Link>
           </div>
-          <h1 className="page-title">📊 Thống kê chi tiết thể chất</h1>
+          <h1 className="page-title">📊 Thống kê sức khỏe & vận động</h1>
           <p className="page-subtitle">{periodLabels[period] || 'Tổng quan dữ liệu sức khỏe'}</p>
         </div>
         <div className="header-actions">

@@ -21,16 +21,18 @@ import {
   Scale,
   Brain,
   AlertCircle,
+  ChevronLeft,
 } from 'lucide-react-native'
+import { useRouter } from 'expo-router'
 import { useAI } from '../../src/hooks/useAI'
 import { MochiCard, MochiBadge } from '../../src/components/ui'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 import { THINKING_MODE_OPTIONS, type ThinkingMode } from '@mochi/shared'
 
 export default function AIScreen() {
+  const router = useRouter()
   const {
     dailyBrief,
-    briefLoading,
     refetchBrief,
     thinkingMode,
     setThinkingMode,
@@ -41,7 +43,17 @@ export default function AIScreen() {
   } = useAI()
 
   const [inputText, setInputText] = useState('')
+  const [refreshingBrief, setRefreshingBrief] = useState(false)
   const scrollViewRef = useRef<ScrollView>(null)
+
+  const handleRefreshBrief = async () => {
+    setRefreshingBrief(true)
+    try {
+      await refetchBrief()
+    } finally {
+      setRefreshingBrief(false)
+    }
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -79,6 +91,15 @@ export default function AIScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTitleRow}>
+            <TouchableOpacity
+              onPress={() => router.navigate('/(tabs)/more')}
+              accessibilityRole="button"
+              accessibilityLabel="Quay lại menu Thêm"
+              style={styles.backToMoreBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <ChevronLeft size={18} color={colors.chocolate} />
+            </TouchableOpacity>
             <Text style={styles.mascot}>🐱✨</Text>
             <View>
               <Text style={styles.title}>Mochi AI</Text>
@@ -114,8 +135,8 @@ export default function AIScreen() {
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              refreshing={briefLoading}
-              onRefresh={refetchBrief}
+              refreshing={refreshingBrief}
+              onRefresh={handleRefreshBrief}
               colors={[colors.cheese]}
             />
           }
@@ -298,6 +319,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: spacing.xs,
+  },
+  backToMoreBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.chocolateBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mascot: {
     fontSize: 26,

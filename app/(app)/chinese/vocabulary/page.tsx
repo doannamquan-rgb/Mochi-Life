@@ -377,6 +377,12 @@ function VocabPageContent() {
   const [lessons, setLessons] = useState<HskLesson[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(searchParams.get('action') === 'add')
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setShowForm(true)
+    }
+  }, [searchParams])
   const [editing, setEditing] = useState<HskVocabulary | undefined>()
   const [search, setSearch] = useState('')
   const [filterLevel, setFilterLevel] = useState('')

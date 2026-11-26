@@ -16,7 +16,7 @@ type Message = {
 
 const QUICK_PROMPTS = [
   { label: 'Hôm nay nên học gì?', emoji: '📚', text: 'Hôm nay tui nên học gì?' },
-  { label: 'Tiến độ giảm cân', emoji: '⚖️', text: 'Dạo này tui giảm cân thế nào?' },
+  { label: 'Tiến độ sức khỏe', emoji: '💪', text: 'Dạo này sức khỏe và tập luyện của tui thế nào?' },
   { label: 'Chi tiêu tháng này', emoji: '💰', text: 'Tháng này tui tiêu tiền thế nào rồi?' },
   { label: 'Đánh giá hôm nay', emoji: '✨', text: 'Đánh giá tổng quan hôm nay cho tui với!' },
   { label: 'Động viên tui chút', emoji: '💪', text: 'Nói gì đó động viên tui đi Mochi!' },
@@ -59,7 +59,7 @@ export default function MochiAIPage() {
         {
           id: 'welcome',
           role: 'assistant',
-          content: `Chào ${name}! 🐱 Mochi đây! Hôm nay mình có thể giúp gì cho bạn? Bạn có thể hỏi về tiến độ học tiếng Trung, giảm cân, chi tiêu hoặc nhờ Mochi đánh giá tổng quan nhé! ✨`,
+          content: `Chào ${name}! 🐱 Mochi đây! Hôm nay mình có thể giúp gì cho bạn? Bạn có thể hỏi về tiến độ học tiếng Trung, sức khỏe & vận động, chi tiêu hoặc nhờ Mochi đánh giá tổng quan nhé! ✨`,
           timestamp: Date.now(),
         },
       ])

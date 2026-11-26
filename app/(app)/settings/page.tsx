@@ -626,10 +626,10 @@ export default function SettingsPage() {
               Phiên bản 6.3.0 (build 6.3.0.1) • Cross-Platform Ecosystem
             </div>
             <p className="about-desc" style={{ fontSize: '0.9rem', color: 'var(--chocolate-400)', fontWeight: 600, maxWidth: 500, margin: 0 }}>
-              Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi giảm cân, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.
+              Ứng dụng quản lý mục tiêu cuộc sống đa năng. Giúp bạn theo dõi sức khỏe & vận động, học tiếng Trung đa cấp độ, quản lý tài chính & lên lịch biểu.
             </p>
             <div className="about-features" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, width: '100%', marginTop: 8 }}>
-              <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>💪 Giảm cân & Luyện tập</div>
+              <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>💪 Sức khỏe & vận động</div>
               <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>🈶 Học tiếng Trung nhiều khóa</div>
               <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>💰 Kiểm soát Chi tiêu định kỳ</div>
               <div className="feature-item" style={{ background: 'var(--cream)', padding: '10px 12px', borderRadius: 14, fontWeight: 700, fontSize: '0.8rem', color: 'var(--chocolate-600)', border: '1px solid var(--chocolate-100)' }}>📅 Lịch tổng hợp & Thành tích</div>

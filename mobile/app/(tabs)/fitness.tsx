@@ -20,12 +20,16 @@ import {
   MochiBadge,
   StatCard,
   KeyboardSafeModal,
+  MochiSkeleton,
+  MochiErrorState,
+  MochiErrorBanner,
 } from '../../src/components/ui'
 import {
   getBMICategory,
   EXERCISE_TYPES,
   formatDate,
   formatDuration,
+  HEALTH_PAGE_TITLE,
 } from '@mochi/shared'
 import { colors, typography, spacing, radius } from '../../src/theme/tokens'
 
@@ -44,6 +48,8 @@ export default function FitnessScreen() {
     weeklyIntakeCalories,
     weeklyCalorieBalance,
     loading,
+    hasData,
+    error,
     addWeightLog,
     addExerciseLog,
     addCalorieIntake,
@@ -52,6 +58,7 @@ export default function FitnessScreen() {
 
   const { triggerReaction } = useMochiReaction()
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
 
   // Weight Modal State
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false)
@@ -76,8 +83,14 @@ export default function FitnessScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await refetch()
-    setRefreshing(false)
+    setRefreshError(null)
+    try {
+      await refetch()
+    } catch {
+      setRefreshError('Không thể làm mới dữ liệu sức khỏe. Vui lòng kiểm tra mạng.')
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const handleSaveCalorie = async () => {
@@ -168,7 +181,7 @@ export default function FitnessScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
-            refreshing={refreshing || loading}
+            refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[colors.cheese]}
           />
@@ -176,10 +189,47 @@ export default function FitnessScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Sức khỏe & Tập luyện 💪</Text>
+          <Text style={styles.title}>{HEALTH_PAGE_TITLE} 💪</Text>
         </View>
 
-        {/* Weight & BMI Card */}
+        {loading && !hasData ? (
+          <View style={{ gap: spacing.md }}>
+            <MochiCard style={{ padding: spacing.lg, gap: 12 }}>
+              <MochiSkeleton width={130} height={16} />
+              <MochiSkeleton width={110} height={34} />
+              <MochiSkeleton width={170} height={34} borderRadius={radius.md} />
+            </MochiCard>
+            <View style={styles.grid}>
+              {[1, 2, 3, 4].map(i => (
+                <MochiCard key={i} style={[styles.gridItem, { gap: 8 }]}>
+                  <MochiSkeleton width="65%" height={14} />
+                  <MochiSkeleton width="80%" height={22} />
+                  <MochiSkeleton width="55%" height={12} />
+                </MochiCard>
+              ))}
+            </View>
+            <MochiCard style={{ padding: spacing.md, gap: 10 }}>
+              <MochiSkeleton width="100%" height={48} />
+              <MochiSkeleton width="100%" height={48} />
+            </MochiCard>
+          </View>
+        ) : error && !hasData ? (
+          <MochiErrorState
+            message={error}
+            onRetry={onRefresh}
+            retrying={refreshing}
+          />
+        ) : (
+          <>
+            {(refreshError || error) && (
+              <MochiErrorBanner
+                message={refreshError || error!}
+                onRetry={onRefresh}
+                retrying={refreshing}
+              />
+            )}
+
+            {/* Weight & BMI Card */}
         <MochiCard style={styles.weightCard} accentColor={colors.peach}>
           <View style={styles.weightHeader}>
             <View>
@@ -332,6 +382,8 @@ export default function FitnessScreen() {
             })
           )}
         </MochiCard>
+          </>
+        )}
       </ScrollView>
 
       {/* Keyboard-Safe Log Weight Modal */}

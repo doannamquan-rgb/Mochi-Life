@@ -7,14 +7,18 @@ import { queryKeys } from '../src/lib/query-keys'
 import { MASTER_ACHIEVEMENTS } from '@mochi/shared'
 import { MochiCard } from '../src/components/ui/MochiCard'
 import { MochiBadge } from '../src/components/ui/MochiBadge'
+import { MochiSkeleton } from '../src/components/ui/MochiSkeleton'
+import { MochiErrorState, MochiErrorBanner } from '../src/components/ui/MochiErrorState'
 import { colors, typography, spacing, radius } from '../src/theme/tokens'
 
 export default function AchievementsScreen() {
   const { user } = useAuth()
   const userId = user?.id
   const [activeCategory, setActiveCategory] = useState<'all' | 'fitness' | 'study' | 'expense' | 'general'>('all')
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
 
-  const { data: unlockedData, isLoading, refetch } = useQuery({
+  const { data: unlockedData, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.achievements(userId),
     enabled: !!userId,
     queryFn: async () => {
@@ -26,6 +30,21 @@ export default function AchievementsScreen() {
       return (data || []) as any[]
     },
   })
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      const res = await refetch()
+      if (res.isError) throw res.error
+    } catch {
+      setRefreshError('Không thể làm mới danh sách thành tích. Vui lòng thử lại.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const hasData = unlockedData !== undefined
 
   const unlockedCodes = new Set((unlockedData || []).map(u => u.achievement?.code || u.achievement_id))
 
@@ -39,9 +58,37 @@ export default function AchievementsScreen() {
     <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} colors={[colors.cheese]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.cheese]} />}
       >
-        {/* Total Badge Summary */}
+        {isLoading && !hasData ? (
+          <View style={{ gap: spacing.md }}>
+            <MochiCard style={{ padding: spacing.lg, alignItems: 'center', gap: 10 }}>
+              <MochiSkeleton width={80} height={40} />
+              <MochiSkeleton width={160} height={22} />
+              <MochiSkeleton width="100%" height={10} borderRadius={radius.full} />
+            </MochiCard>
+            <MochiCard style={{ padding: spacing.md, gap: 12 }}>
+              <MochiSkeleton width="100%" height={56} />
+              <MochiSkeleton width="100%" height={56} />
+              <MochiSkeleton width="100%" height={56} />
+            </MochiCard>
+          </View>
+        ) : isError && !hasData ? (
+          <MochiErrorState
+            message="Không thể tải thành tích. Vui lòng kiểm tra kết nối mạng."
+            onRetry={onRefresh}
+            retrying={refreshing}
+          />
+        ) : (
+          <>
+            {(refreshError || isError) && (
+              <MochiErrorBanner
+                message={refreshError || 'Không thể cập nhật thành tích lúc này.'}
+                onRetry={onRefresh}
+                retrying={refreshing}
+              />
+            )}
+            {/* Total Badge Summary */}
         <MochiCard style={styles.summaryCard}>
           <Text style={styles.mascot}>🏆🐱✨</Text>
           <Text style={styles.summaryTitle}>Huy hiệu Mochi</Text>
@@ -103,6 +150,8 @@ export default function AchievementsScreen() {
             )
           })}
         </View>
+          </>
+        )}
       </ScrollView>
     </View>
   )

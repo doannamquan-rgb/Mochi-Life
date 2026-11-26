@@ -123,7 +123,7 @@ export default function FitnessGoalsPage() {
 
   return (
     <div className="page">
-      <h1 className="page-title">🎯 Mục tiêu sức khoẻ</h1>
+      <h1 className="page-title">🎯 Mục tiêu sức khỏe</h1>
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

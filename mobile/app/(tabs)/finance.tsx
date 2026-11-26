@@ -17,6 +17,9 @@ import {
   MochiButton,
   MochiInput,
   KeyboardSafeModal,
+  MochiSkeleton,
+  MochiErrorState,
+  MochiErrorBanner,
 } from '../../src/components/ui'
 import {
   formatVND,
@@ -36,6 +39,8 @@ export default function FinanceScreen() {
     monthExpense,
     monthIncome,
     loading,
+    hasData,
+    error,
     addTransaction,
     deleteTransaction,
     adjustWalletBalance,
@@ -44,6 +49,7 @@ export default function FinanceScreen() {
 
   const { triggerReaction } = useMochiReaction()
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Wallet Balance Adjustment Modal State
@@ -63,8 +69,14 @@ export default function FinanceScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await refetch()
-    setRefreshing(false)
+    setRefreshError(null)
+    try {
+      await refetch()
+    } catch {
+      setRefreshError('Không thể làm mới dữ liệu tài chính. Vui lòng kiểm tra mạng.')
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const handleOpenAdd = () => {
@@ -172,7 +184,7 @@ export default function FinanceScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
-            refreshing={refreshing || loading}
+            refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[colors.cheese]}
           />
@@ -181,12 +193,48 @@ export default function FinanceScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Quản lý Chi tiêu 💰</Text>
-          <TouchableOpacity style={styles.addIconBtn} onPress={handleOpenAdd} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.addIconBtn}
+            onPress={handleOpenAdd}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Thêm giao dịch mới"
+          >
             <Plus size={20} color={colors.white} />
           </TouchableOpacity>
         </View>
 
-        {/* Total Net Worth Card */}
+        {loading && !hasData ? (
+          <View style={{ gap: spacing.md }}>
+            <MochiCard style={{ padding: spacing.lg, gap: 10 }}>
+              <MochiSkeleton width={130} height={16} />
+              <MochiSkeleton width="70%" height={30} />
+              <MochiSkeleton width="100%" height={42} />
+            </MochiCard>
+            <MochiCard style={{ padding: spacing.md, gap: 12 }}>
+              <MochiSkeleton width={120} height={18} />
+              <MochiSkeleton width="100%" height={54} />
+              <MochiSkeleton width="100%" height={54} />
+              <MochiSkeleton width="100%" height={54} />
+            </MochiCard>
+          </View>
+        ) : error && !hasData ? (
+          <MochiErrorState
+            message={error}
+            onRetry={onRefresh}
+            retrying={refreshing}
+          />
+        ) : (
+          <>
+            {(refreshError || error) && (
+              <MochiErrorBanner
+                message={refreshError || error!}
+                onRetry={onRefresh}
+                retrying={refreshing}
+              />
+            )}
+
+            {/* Total Net Worth Card */}
         <MochiCard style={styles.balanceCard} accentColor={colors.cheese}>
           <Text style={styles.balanceLabel}>Tổng số dư khả dụng</Text>
           <Text style={styles.balanceValue}>{formatVND(totalBalance)}</Text>
@@ -304,6 +352,8 @@ export default function FinanceScreen() {
             ))
           )}
         </MochiCard>
+          </>
+        )}
       </ScrollView>
 
       {/* Keyboard-Safe Add Transaction Modal */}

@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/hooks/use-user'
 import { useDataChanged } from '@/hooks/use-data-changed'
 import { fetchFitnessStats, type FitnessStats } from '@/lib/fitness-stats'
-import { formatWeight, formatDuration, getPercent, EXERCISE_TYPES, getExerciseLabel, getExerciseIcon, INTENSITY_LABELS } from '@/lib/format'
+import { formatWeight, formatDuration, getPercent, EXERCISE_TYPES, getExerciseLabel, getExerciseIcon, INTENSITY_LABELS, HEALTH_PAGE_TITLE } from '@/lib/format'
 import { formatDate, todayString, RollingPeriod } from '@/lib/date-utils'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { format, parseISO } from 'date-fns'
@@ -224,7 +224,7 @@ export default function FitnessOverviewPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">💪 Giảm cân & Luyện tập</h1>
+          <h1 className="page-title">💪 {HEALTH_PAGE_TITLE}</h1>
           <p className="page-subtitle">Theo dõi hành trình của bạn</p>
         </div>
         <div className="header-actions">
@@ -295,7 +295,7 @@ export default function FitnessOverviewPage() {
       {/* Weight progress */}
       {weightGoal && (
         <div className="mochi-card" style={{ padding: 20, marginBottom: 16 }}>
-          <h3 className="card-section-title">Tiến độ giảm cân</h3>
+          <h3 className="card-section-title">Tiến độ mục tiêu cân nặng</h3>
           <div className="weight-progress-bar">
             <div className="wp-start">{weightGoal.starting_weight} kg</div>
             <div className="wp-bar">
